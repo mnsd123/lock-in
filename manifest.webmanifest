@@ -1,0 +1,17 @@
+{
+  "name": "Tập Tết 2027",
+  "short_name": "Tập Tết",
+  "description": "Theo dõi plan 11 tuần đến Tết 2027: ghi set, volume nhóm cơ, InBody.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

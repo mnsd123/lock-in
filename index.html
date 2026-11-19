@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tập Tết">
+<meta name="theme-color" content="#050505">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Tập Tết 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Một thế giới tối duy nhất: nền đen, chữ sáng, nhấn cam lửa. Bố cục: một cột cuộn, thanh tab cố định dưới đáy. */
+:root{
+  --bg:#050505; --card:#0E0E10; --card2:#141416; --line:#1C1C1F; --line2:#2E2E33;
+  --text:#F4F4F5; --muted:#A1A1AA; --dim:#8B8B93; --faint:#6E6E76;
+  --acc:#FF6A26; --acc2:#FF8A4A; --good:#4ADE80; --bad:#F87171;
+  --font:'Be Vietnam Pro',system-ui,-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--font)}
+body{overscroll-behavior-y:none}
+button,input,select{font-family:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+#main{padding:calc(var(--top) + 14px) 16px calc(var(--bot) + 170px);max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.05;margin:0;text-wrap:balance}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px}
+.between{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chip{font-size:11px;padding:4px 8px;border-radius:8px;background:#1A1A1D;color:#D4D4D8;white-space:nowrap}
+.chip.acc{background:#2A1407;color:var(--acc2)}
+.muted{color:var(--muted)} .dim{color:var(--dim)} .small{font-size:12px} .tiny{font-size:11px}
+.btn{height:44px;padding:0 16px;border-radius:14px;border:1px solid var(--line2);background:var(--card2);font-size:14px;font-weight:600}
+.btn.primary{background:linear-gradient(180deg,var(--acc2),#E8561C);border:none;color:#140600}
+.btn.light{background:var(--text);color:var(--bg);border:none}
+.btn.ghost{background:transparent}
+.iconbtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--line2);background:var(--card2);display:flex;align-items:center;justify-content:center}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:3px;border-radius:12px;background:var(--card2)}
+.seg button{height:34px;border:none;border-radius:9px;background:transparent;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--bg);font-weight:700}
+input.cell,select.field,input.field{height:44px;border-radius:12px;border:1px solid #232327;background:#0B0B0C;font-size:16px;text-align:center;width:100%;min-width:0}
+input.field,select.field{text-align:left;padding:0 12px}
+input.cell.done{background:#1A1A1D;color:var(--text)}
+input.cell::placeholder{color:#55555C}
+
+/* Hero buổi tập */
+.hero{position:relative;border-radius:22px;background:radial-gradient(120% 90% at 85% 20%,#2A1407 0%,#0E0E10 55%);border:1px solid #1F1F23;padding:16px;display:flex;gap:8px;min-height:200px}
+.hero h1{font-size:34px}
+.daystrip{display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr)) 44px;gap:4px;align-items:center}
+.day{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:var(--card);border:1px solid transparent;font-size:10px;color:var(--dim)}
+.day b{font-family:var(--mono);font-size:15px;color:var(--text)}
+.day[aria-current="date"]{background:var(--text);color:var(--bg)} .day[aria-current="date"] b{color:var(--bg)}
+.day.done{border-color:#6A2A0E} .day.done i{background:var(--acc)}
+.day i{width:5px;height:5px;border-radius:50%;background:transparent;margin-top:2px}
+.day.today{border-color:var(--line2)}
+
+/* Bài tập */
+.ex{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.ex.open{border-color:#3A1E10}
+.exhead{width:100%;border:none;background:transparent;text-align:left;padding:14px;display:flex;align-items:center;gap:12px}
+.exnum{font-family:var(--mono);font-size:13px;color:var(--faint);width:20px}
+.exprog{font-family:var(--mono);font-size:13px;color:var(--dim)}
+.ex.complete .exprog{color:var(--acc)}
+.exbody{padding:0 14px 14px;display:flex;flex-direction:column;gap:9px}
+.setgrid{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 56px 46px;gap:8px;align-items:center}
+.sethead{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--faint);text-align:center}
+.sethead span:first-child{text-align:left}
+.setn{font-family:var(--mono);font-size:15px;color:var(--faint)}
+.setn.on{color:var(--acc)}
+.check{width:46px;height:44px;border-radius:12px;border:1px solid var(--line2);background:transparent;display:flex;align-items:center;justify-content:center;color:transparent}
+.check[aria-pressed="true"]{border:none;background:linear-gradient(180deg,var(--acc2),#E8561C);color:#140600}
+.hint{font-size:12px;line-height:1.5;color:var(--muted);background:#0B0B0C;border-radius:12px;padding:10px 12px}
+.hint.up{color:var(--acc2);background:#1A0D06}
+.linkbtn{border:none;background:none;padding:6px 0;font-size:12px;font-weight:600;color:var(--acc2)}
+
+/* Thống kê */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tile{padding:10px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.tile span{font-size:9px;letter-spacing:1px;color:var(--dim);font-weight:600}
+.tile b{font-family:var(--mono);font-size:22px;line-height:1}
+.bodymap{border-radius:22px;background:radial-gradient(90% 60% at 50% 40%,#1A0E08 0%,#070707 70%);border:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:12px}
+.figs{display:flex;justify-content:space-around;align-items:flex-end}
+.figs figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--dim)}
+.legend{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--dim)}
+.legend i{width:20px;height:8px;border-radius:4px}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:96px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:13px}
+.track{height:8px;border-radius:4px;background:#1A1A1D;overflow:hidden}
+.track div{height:8px;border-radius:4px}
+.heat{display:grid;grid-template-columns:20px repeat(12,minmax(0,1fr));gap:4px;font-size:9px;color:var(--faint)}
+.heat i{aspect-ratio:1;border-radius:3px;background:#151517}
+svg.chart text{font-family:var(--mono);font-size:10px;fill:var(--dim)}
+
+/* Lịch */
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.wday{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;font-size:9px;color:var(--dim)}
+.wday b{font-family:var(--mono);font-size:13px;color:var(--text)}
+.wday.done{background:#2A1407;border-color:#6A2A0E;color:var(--acc2)}
+.wday.miss{border-color:#4A1F1F}
+.wday.today{outline:2px solid var(--text);outline-offset:-2px}
+.wday.empty{visibility:hidden}
+.wday.ib{box-shadow:inset 0 -3px 0 #4ADE80}
+
+/* Nav + timer */
+nav{position:fixed;left:0;right:0;bottom:0;background:#0B0B0C;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding-bottom:var(--bot);z-index:5}
+nav button{height:64px;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--dim)}
+nav button[aria-current="page"]{color:var(--acc);font-weight:700}
+#timer{position:fixed;left:12px;right:12px;bottom:calc(var(--bot) + 74px);max-width:536px;margin:0 auto;padding:10px 12px;border-radius:18px;background:#141416;border:1px solid var(--line2);box-shadow:0 10px 30px #000;display:none;align-items:center;gap:10px;z-index:6}
+#timer.show{display:flex}
+#timer .t{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--acc2);min-width:70px}
+#timer.over .t{color:var(--good)}
+#toast{position:fixed;left:50%;top:calc(var(--top) + 12px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;z-index:9;display:none;max-width:90vw}
+#toast.show{display:block}
+dialog{background:var(--card);color:var(--text);border:1px solid var(--line2);border-radius:20px;padding:18px;max-width:340px}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+@media (prefers-reduced-motion:no-preference){.ex,.btn,.check{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<main id="main" aria-live="polite"></main>
+
+<div id="timer" role="timer" aria-live="off">
+  <span class="t" id="timerT">0:00</span>
+  <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0">
+    <span class="small muted" id="timerL">Nghỉ</span>
+    <div class="track" style="height:4px"><div id="timerBar" style="height:4px;width:0;background:var(--acc)"></div></div>
+  </div>
+  <button class="btn" style="height:38px;padding:0 10px;font-size:12px" data-act="timerAdd">+15s</button>
+  <button class="btn light" style="height:38px;padding:0 12px;font-size:12px" data-act="timerStop">Bỏ qua</button>
+</div>
+
+<nav aria-label="Điều hướng">
+  <button data-tab="today"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M2 11v2M22 11v2"/></svg>Hôm nay</button>
+  <button data-tab="plan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Lịch</button>
+  <button data-tab="stats"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Thống kê</button>
+  <button data-tab="body"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Cơ thể</button>
+</nav>
+<div id="toast" role="status"></div>
+<dialog id="dlg"><p id="dlgText" style="margin:0 0 16px;line-height:1.5"></p><div class="row" style="justify-content:flex-end"><button class="btn" id="dlgNo">Huỷ</button><button class="btn primary" id="dlgYes">Đồng ý</button></div></dialog>
+
+<script>
+"use strict";
+/* ================= DỮ LIỆU PLAN ================= */
+const PLAN_START = '2026-11-20', W1 = '2026-11-23', PLAN_END = '2027-02-05', TET = '2027-02-06';
+const INBODY_DAYS = { '2026-12-20': 'InBody mốc 1', '2027-01-17': 'InBody mốc 2', '2027-02-05': 'InBody cuối' };
+
+const MUSCLES = {
+  chest:'Ngực', fdelt:'Vai trước', sdelt:'Vai giữa', rdelt:'Vai sau', traps:'Cầu vai · lưng giữa', lats:'Lưng xô',
+  biceps:'Tay trước', triceps:'Tay sau', forearm:'Cẳng tay', abs:'Bụng', oblique:'Liên sườn',
+  quad:'Đùi trước', ham:'Đùi sau', glute:'Mông', adductor:'Đùi trong', calf:'Bắp chân', lowback:'Lưng dưới'
+};
+
+// sets: [GD1, GD2, GD3]; reps: [GD1, GD2, GD3]
+const SESSIONS = {
+  pushA: { name:'Push A', tag:'Nặng', focus:'Ngực, vai, tay trước + chân nhẹ', dur:'70–80 phút', ex:[
+    { id:'bench', name:'Bench press', alt:'Dumbbell bench hoặc máy chest press', rule:'cb', type:'main', sets:[4,4,5], reps:['6–8','5–7','4–6'], rest:'2:30–3:00', inc:'+2.5 kg', m:{chest:1,fdelt:.5,triceps:.5}, tip:'5 điểm tiếp xúc, kéo bả vai về sau và xuống, hạ thanh chạm ngực dưới, khuỷu 45–60°.' },
+    { id:'ohp', name:'Overhead press', type:'main', sets:[3,3,4], reps:['6–8','5–7','4–6'], rest:'2:30', inc:'+2.5 kg', m:{fdelt:1,sdelt:.5,triceps:.5}, tip:'Siết mông và bụng, thanh đi sát mặt, khoá tay ngay trên đầu, không ưỡn lưng.' },
+    { id:'incdb', name:'Incline dumbbell press', alt:'Incline machine hoặc Smith incline', rule:'cb', type:'acc', sets:[3,3,3], reps:['8–10','8–10','6–10'], rest:'2:00', inc:'+1–2 kg', m:{chest:1,fdelt:.5} },
+    { id:'latraise', name:'Lateral raise', type:'iso', sets:[3,4,4], reps:['12–15','12–15','12–20'], rest:'1:00–1:15', inc:'+1 kg', m:{sdelt:1}, tip:'Khuỷu cong nhẹ, nâng ngang vai, tay hơi chếch trước thân, không nhún vai.' },
+    { id:'bbcurl', name:'Barbell hoặc EZ curl', type:'acc', sets:[3,3,3], reps:['8–10','8–10','6–10'], rest:'1:30', inc:'+2.5 kg', m:{biceps:1,forearm:.5} },
+    { id:'squat', name:'Squat (nhẹ)', alt:'Leg press (nhẹ)', rule:'odd', type:'leg', leg:true, sets:[3,3,3], reps:['8–10','8–10','6–10'], rest:'2:00–2:30', inc:'+2.5 kg', m:{quad:1,glute:.5,adductor:.5}, tip:'Tuần lẻ squat, tuần chẵn leg press. Dừng ở RIR 2–3, lưng hoặc gối khó chịu thì đổi sang leg press.' },
+    { id:'legext', name:'Leg extension', type:'leg', leg:true, sets:[3,3,3], reps:['12–15','12–15','10–15'], rest:'1:15', inc:'+1 nấc', m:{quad:1}, tip:'Duỗi hết, siết 1 giây, hạ chậm 3 giây.' }
+  ]},
+  pullB: { name:'Pull B', tag:'Volume', focus:'Lưng, vai sau, tay sau · không tập chân', dur:'60–70 phút', ex:[
+    { id:'latpd', name:'Lat pulldown grip rộng', alt:'Neutral-grip, V-bar hoặc pull-up trợ lực', rule:'cb', type:'main', sets:[3,4,4], reps:['8–12','8–12','8–10'], rest:'2:00', inc:'+1 nấc', m:{lats:1,biceps:.5,rdelt:.25}, tip:'Kéo khuỷu xuống về phía túi quần, ngực hướng lên, ngả người không quá 15–20°.' },
+    { id:'highrow', name:'High row machine', alt:'One-arm dumbbell row hoặc seated cable row', rule:'cb', type:'acc', sets:[3,3,4], reps:['10–12','10–12','8–12'], rest:'1:30–2:00', inc:'+1 nấc', m:{traps:1,lats:.5,rdelt:.5,biceps:.5}, tip:'Ngực tựa đệm, kéo khuỷu xuống và hơi ra sau, không nhún vai, siết 1 giây.' },
+    { id:'ohtri', name:'Overhead cable triceps extension', type:'acc', sets:[3,4,4], reps:['10–12','10–12','10–12'], rest:'1:15–1:30', inc:'+1 nấc', m:{triceps:1} },
+    { id:'ropepd', name:'Rope pushdown hoặc dip', type:'iso', sets:[3,3,3], reps:['10–12','10–12','8–12'], rest:'1:15', inc:'+1 nấc', m:{triceps:1} },
+    { id:'facepull', name:'Face pull', type:'iso', sets:[3,3,3], reps:['15','15','15'], rest:'1:00', inc:'+1 nấc', m:{rdelt:1,traps:.5}, tip:'Dây ngang mắt, kéo về trán, khuỷu cao, xoay ngoài vai ở cuối.' }
+  ]},
+  pushB: { name:'Push B', tag:'Volume', focus:'Ngực trên, vai, tay trước · không tập chân', dur:'60–70 phút', ex:[
+    { id:'dbsp', name:'Dumbbell shoulder press (ngồi)', type:'main', sets:[3,4,4], reps:['8–10','8–10','6–10'], rest:'2:00', inc:'+1–2 kg', m:{fdelt:1,sdelt:.5,triceps:.5} },
+    { id:'incbb', name:'Incline barbell hoặc Smith press', alt:'Incline dumbbell hoặc incline machine', rule:'cb', type:'acc', sets:[3,4,4], reps:['8–10','8–10','6–10'], rest:'2:00–2:30', inc:'+2.5 kg', m:{chest:1,fdelt:.5,triceps:.25}, tip:'Ghế khoảng 30°, hạ về ngực trên, khuỷu không mở quá rộng.' },
+    { id:'cablefly', name:'Low-to-high cable fly', alt:'Pec deck hoặc dumbbell fly', rule:'cb', type:'iso', sets:[3,3,3], reps:['12–15','12–15','10–15'], rest:'1:15', inc:'+1 nấc', m:{chest:1}, tip:'Kéo từ thấp lên ngực trên, khuỷu cong nhẹ, siết 1 giây ở đỉnh.' },
+    { id:'cablelat', name:'Cable lateral raise', type:'iso', sets:[3,4,4], reps:['15–20','15–20','15–20'], rest:'1:00', inc:'+1 nấc', m:{sdelt:1} },
+    { id:'inccurl', name:'Incline dumbbell curl', type:'iso', sets:[3,3,3], reps:['10–12','10–12','10–12'], rest:'1:15–1:30', inc:'+1 kg', m:{biceps:1}, tip:'Tựa lưng 45–60°, tay buông thẳng sau thân để bắp tay giãn hết.' },
+    { id:'hammer', name:'Hammer curl', type:'iso', sets:[2,3,3], reps:['10–12','10–12','10–12'], rest:'1:00–1:15', inc:'+1 kg', m:{biceps:.5,forearm:1} }
+  ]},
+  pullA: { name:'Pull A', tag:'Nặng', focus:'Lưng, vai sau, tay sau ưu tiên + chân nhẹ', dur:'70–80 phút', ex:[
+    { id:'csrow', name:'Chest-supported row machine', alt:'Barbell row machine (linear) hoặc seated cable row', rule:'cb', type:'main', sets:[4,4,4], reps:['6–8','6–8','5–7'], rest:'2:30', inc:'+1 nấc', m:{traps:1,lats:.5,rdelt:.5,biceps:.5}, tip:'Ngực tựa chắc, khuỷu 45°, kéo về sườn dưới, siết bả vai 1 giây, hạ 2–3 giây.' },
+    { id:'pullup', name:'Pull-up (trợ lực nếu cần)', alt:'Lat pulldown', type:'main', sets:[3,4,4], reps:['6–10','6–10','5–8'], rest:'2:00', inc:'+1 nấc / bớt trợ lực', m:{lats:1,biceps:.5}, tip:'Treo thẳng tay, kéo ngực lên thanh, không đung đưa.' },
+    { id:'skull', name:'Skullcrusher', alt:'Overhead triceps extension', type:'acc', sets:[3,4,4], reps:['8–12','8–12','8–10'], rest:'1:30', inc:'+2.5 kg', m:{triceps:1}, tip:'Khuỷu cố định hướng lên trần, hạ thanh về trán. Đau khuỷu thì đổi sang overhead bằng cáp.' },
+    { id:'tripd', name:'Triceps pushdown', type:'iso', sets:[2,3,3], reps:['10–12','10–12','10–12'], rest:'1:00–1:15', inc:'+1 nấc', m:{triceps:1} },
+    { id:'rdfly', name:'Rear delt fly hoặc reverse pec deck', type:'iso', sets:[3,3,4], reps:['12–15','15','15'], rest:'1:00', inc:'+1 nấc', m:{rdelt:1,traps:.25} },
+    { id:'legcurl', name:'Leg curl nằm', alt:'Leg curl ngồi', rule:'odd', type:'leg', leg:true, sets:[3,3,3], reps:['10–12','10–12','8–12'], rest:'1:30', inc:'+1 nấc', m:{ham:1}, tip:'Hạ chậm 3 giây, không giật hông khỏi ghế. Tuần chẵn đổi sang leg curl ngồi.' },
+    { id:'adduct', name:'Hip adduction', type:'leg', leg:true, sets:[3,3,3], reps:['12–15','12–15','12–15'], rest:'1:00', inc:'+1 nấc', m:{adductor:1}, tip:'Ngồi thẳng lưng, khép chậm, dừng 1 giây, mở lại 2–3 giây.' }
+  ]},
+  core: { name:'Vai – core', tag:'Nhẹ', focus:'Vai giữa và sau, cầu vai, core · RIR 2–3', dur:'45–50 phút', ex:[
+    { id:'leanlat', name:'Lean-away lateral raise (từng tay)', type:'iso', sets:[3,4,4], reps:['15–20','15–20','15–20'], rest:'1:00', inc:'+1 kg', m:{sdelt:1}, tip:'Một tay bám trụ, ngả người ra xa; làm tay trái trước.' },
+    { id:'revpec', name:'Reverse pec deck', type:'iso', sets:[3,3,4], reps:['12–15','15','15'], rest:'1:00', inc:'+1 nấc', m:{rdelt:1} },
+    { id:'shrug', name:'Dumbbell shrug', type:'iso', sets:[3,3,3], reps:['10–12','10–12','10–12'], rest:'1:00–1:15', inc:'+2 kg', m:{traps:1}, tip:'Nâng thẳng lên tai, siết 1 giây, không xoay vai.' },
+    { id:'knee', name:'Hanging knee raise', type:'core', sets:[2,3,3], reps:['10–15','10–15','10–15'], rest:'1:00', inc:'thêm rep', m:{abs:1,oblique:.25}, tip:'Cuộn xương chậu lên, không đung đưa.' },
+    { id:'crunch', name:'Cable crunch', type:'core', sets:[2,3,3], reps:['10–15','10–15','10–15'], rest:'1:00', inc:'+1 nấc', m:{abs:1} },
+    { id:'pallof', name:'Pallof press (mỗi bên)', type:'core', sets:[2,2,3], reps:['10','10','10'], rest:'0:45', inc:'+1 nấc', m:{oblique:1,abs:.5} }
+  ]},
+  ball: { name:'Đá bóng', tag:'Thứ 4', focus:'Đá bóng cố định; nghỉ đá thì chạy nhẹ Z2 30–45 phút', ex:[] },
+  rest: { name:'Nghỉ', tag:'Hồi phục', focus:'Nghỉ hoàn toàn: ngủ đủ, ăn đủ protein, đi bộ nhẹ nếu muốn', ex:[] }
+};
+const ALLEX = {}; Object.values(SESSIONS).forEach(s => s.ex.forEach(e => ALLEX[e.id] = e));
+
+const WEEK_RIR = ['3','2–3','2–3','2','3–4','2','1–2','1–2','3–4','1–2','1','1'];
+const WEEK_NOTE = [
+  'Tuần 0: cắt 30% số set, chọn tạ khởi điểm gần mức hiện tại.',
+  'Tuần 1: đủ set GD1, dùng tạ hiện tại, ghi mọi con số làm mốc.',
+  'Tuần 2: giữ tạ tuần 1, cố thêm rep; đạt rep cao nhất thì tăng tạ.',
+  'Tuần 3: tăng tạ ở các bài đã đạt rep cao nhất.',
+  'Tuần 4 giảm tải: giữ nguyên tạ, cắt 40% số set. InBody sáng CN 20/12.',
+  'Tuần 5: vào GD2, thêm set cho vai giữa, lưng, ngực trên.',
+  'Tuần 6: đẩy tạ ở bài chính.',
+  'Tuần 7: tuần nặng nhất của GD2.',
+  'Tuần 8 giảm tải: cắt 40% số set, ăn mức duy trì. InBody sáng CN 17/1.',
+  'Tuần 9: GD3 rep thấp, tạ bài chính tăng khoảng 5% so với tuần 7.',
+  'Tuần 10: tuần đỉnh, set nặng nhất ở bài chính, cô lập RIR 0–1.',
+  'Tuần 11: cắt 30% số set, mỗi bài chính 1 set tốt nhất 4–6 rep (RIR 1). InBody sáng 5/2.'
+];
+
+/* ================= TIỆN ÍCH NGÀY ================= */
+const pad = n => String(n).padStart(2,'0');
+const D = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const ymd = dt => `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+const addDays = (s, n) => { const d = D(s); d.setDate(d.getDate()+n); return ymd(d); };
+const diffDays = (a, b) => Math.round((D(b) - D(a)) / 864e5);
+const todayStr = () => ymd(new Date());
+const DOW = ['T2','T3','T4','T5','T6','T7','CN'];
+const dow = s => (D(s).getDay() + 6) % 7;
+const fmtDate = s => { const d = D(s); return `${DOW[dow(s)] === 'CN' ? 'Chủ nhật' : 'Thứ ' + (dow(s)+2)} · ${d.getDate()}/${d.getMonth()+1}`; };
+const short = s => { const d = D(s); return `${d.getDate()}/${d.getMonth()+1}`; };
+
+function weekOf(s) {
+  if (s < PLAN_START) return -1;
+  if (s > PLAN_END) return 12;
+  if (s < W1) return 0;
+  return Math.floor(diffDays(W1, s) / 7) + 1;
+}
+const phaseOf = w => w <= 4 ? 0 : w <= 8 ? 1 : 2;
+const PHASE = ['GD1 · Nền tảng','GD2 · Xây','GD3 · Nét'];
+
+function plannedSession(s) {
+  const w = weekOf(s), d = dow(s);
+  if (w < 0 || w > 11) return null;
+  if (w === 0) return [null,null,null,null,'pullA','core','rest'][d];
+  if (w === 11) return ['pushA','pullA','ball','pushB','pullB',null,null][d];
+  return ['pushA','pullB','ball','pushB','pullA','core','rest'][d];
+}
+
+/* ================= TRẠNG THÁI ================= */
+const KEY = 'tt27-data';
+let S = { logs:{}, body:[{ date:'2026-11-14', weight:76.9, bfm:17.5, pbf:22.8, smm:33.6, waist:'', note:'InBody gốc (sau bữa trưa)' }] };
+try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Không lưu được: bộ nhớ trình duyệt bị chặn'); } }
+
+const UI = { tab:'today', date: todayStr(), open:null, range:7, lift:null, drafts:{} };
+if (UI.date < PLAN_START) UI.date = PLAN_START;
+
+/* ================= LOGIC BUỔI TẬP ================= */
+function sessionKeyFor(s) { return (S.logs[s] && S.logs[s].session) || plannedSession(s) || 'rest'; }
+
+function exList(s, key) {
+  const w = weekOf(s); const sess = SESSIONS[key];
+  let list = sess.ex;
+  if (w === 11 && key === 'pullA') list = list.filter(e => !e.leg);
+  return list;
+}
+function setCount(ex, w) {
+  const p = phaseOf(Math.max(0, Math.min(11, w)));
+  const base = ex.sets[p];
+  if (w === 4 || w === 8) return ex.leg ? 2 : Math.max(1, Math.round(base * 0.6));
+  if (w === 0 || w === 11) return Math.max(1, Math.round(base * 0.7));
+  return base;
+}
+function defaultVariant(ex, w) {
+  if (!ex.alt) return 0;
+  if (ex.rule === 'odd') return (w % 2 === 0 && w > 0) ? 1 : 0;
+  if (ex.rule === 'cb') return (w > 0 && w % 2 === 0 && ![4,8,11].includes(w)) ? 1 : 0;
+  return 0;
+}
+const exName = (ex, v) => v ? ex.alt : ex.name;
+const repsFor = (ex, w) => ex.reps[phaseOf(Math.max(0, Math.min(11, w)))];
+const restSec = ex => { const m = ex.rest.match(/(\d+):(\d+)/); return m ? (+m[1]) * 60 + (+m[2]) : 90; };
+const rirFor = (ex, w) => ex.type === 'main' ? WEEK_RIR[Math.max(0, Math.min(11, w))] : ex.type === 'leg' || ex.type === 'core' ? '2–3' : (w === 4 || w === 8 ? '3' : '1–2');
+
+function lastSets(id, v, before) {
+  const dates = Object.keys(S.logs).filter(d => d < before).sort().reverse();
+  for (const d of dates) {
+    const e = S.logs[d].ex && S.logs[d].ex[id];
+    if (e && (e.v || 0) === v && e.sets.some(x => x.done)) return { date: d, sets: e.sets.filter(x => x.done) };
+  }
+  return null;
+}
+function buildLog(s, key) {
+  const w = weekOf(s); const log = { session: key, ex: {}, done: false };
+  exList(s, key).forEach(ex => {
+    const v = defaultVariant(ex, w); const last = lastSets(ex.id, v, s);
+    const kg = last ? last.sets[0].kg : '';
+    log.ex[ex.id] = { v, sets: Array.from({ length: setCount(ex, w) }, () => ({ kg, rep:'', rir:'', done:false })) };
+  });
+  return log;
+}
+function getLog(s) {
+  if (S.logs[s]) return S.logs[s];
+  const key = sessionKeyFor(s);
+  if (!UI.drafts[s] || UI.drafts[s].session !== key) UI.drafts[s] = buildLog(s, key);
+  return UI.drafts[s];
+}
+function commit(s) { if (!S.logs[s]) { S.logs[s] = getLog(s); delete UI.drafts[s]; } S.logs[s].t = Date.now(); save(); }
+function doneSets(log) { return log && log.ex ? Object.values(log.ex).reduce((a, e) => a + e.sets.filter(x => x.done).length, 0) : 0; }
+function isTrained(s) { const l = S.logs[s]; return !!l && (l.done || doneSets(l) > 0 || !!l.ball); }
+
+function upHint(ex, v, s) {
+  const last = lastSets(ex.id, v, s); if (!last) return null;
+  const top = parseInt(String(repsFor(ex, weekOf(s))).split('–').pop(), 10);
+  const all = last.sets.every(x => +x.rep >= top);
+  return { last, up: all };
+}
+
+/* ================= VOLUME ================= */
+function volume(from, to) {
+  const vol = {}; Object.keys(MUSCLES).forEach(k => vol[k] = 0);
+  for (const [d, log] of Object.entries(S.logs)) {
+    if (d < from || d > to || !log.ex) continue;
+    for (const [id, e] of Object.entries(log.ex)) {
+      const ex = ALLEX[id]; if (!ex) continue;
+      const n = e.sets.filter(x => x.done).length;
+      for (const [m, w] of Object.entries(ex.m)) vol[m] += n * w;
+    }
+  }
+  return vol;
+}
+function planVolume(from, to) {
+  const vol = {}; Object.keys(MUSCLES).forEach(k => vol[k] = 0);
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const key = plannedSession(d); if (!key || !SESSIONS[key].ex.length) continue;
+    exList(d, key).forEach(ex => { const n = setCount(ex, weekOf(d)); for (const [m, w] of Object.entries(ex.m)) vol[m] += n * w; });
+  }
+  return vol;
+}
+function levelOf(sets, days) {
+  if (sets <= 0) return 0;
+  const pw = sets * 7 / Math.max(7, days);
+  return pw < 4 ? 1 : pw < 8 ? 2 : pw < 12 ? 3 : 4;
+}
+
+/* ================= HÌNH GIẢI PHẪU 3D ================= */
+const LV = [["#4A4E57","#24262C","#0B0C0E"],["#9A4A22","#5E2A12","#260F06"],["#E0703A","#A9441B","#4A1A08"],["#FF9A5C","#E8561C","#7A260A"],["#FFC08A","#FF6A26","#A3300A"]];
+const SIL = "M100 70 L86 72 Q66 75 54 82 Q40 90 37 106 L33 142 L28 178 L22 214 L18 246 L28 250 L36 220 L44 186 L50 162 L54 196 L56 228 L57 244 L55 272 L57 312 L61 350 L60 392 L62 424 L80 428 L82 398 L84 352 L88 304 L94 266 L100 262 Z";
+const FRONT = [
+  ["M86 74 Q74 76 62 82 Q74 84 88 84 Z","trap"],
+  ["M64 80 Q46 82 39 100 Q36 118 44 130 Q52 118 57 104 Q61 92 72 86 Z","fdelt"],
+  ["M98 88 L98 128 Q84 135 70 129 Q57 121 58 106 Q62 92 74 86 Q86 83 98 88 Z","chest"],
+  ["M44 128 Q37 144 38 160 Q42 170 50 166 Q57 150 57 130 Q52 121 44 128 Z","biceps"],
+  ["M38 168 Q30 192 27 214 L36 219 Q46 196 51 170 Z","forearm"],
+  ["M86 133 h11.5 v17 h-11.5 Q85 142 86 133 Z","abs"],
+  ["M86 154 h11.5 v18 h-11.5 Q85 163 86 154 Z","abs"],
+  ["M86 176 h11.5 v18 h-11.5 Q85 185 86 176 Z","abs"],
+  ["M86 198 h11.5 v26 Q92 230 87 222 Q85 210 86 198 Z","abs"],
+  ["M71 132 Q66 162 72 198 Q78 214 83 220 L83 134 Q77 136 71 132 Z","oblique"],
+  ["M58 240 Q51 282 57 322 Q63 346 74 350 Q86 342 88 302 Q90 264 84 238 Q70 231 58 240 Z","quad"],
+  ["M78 316 Q90 320 90 336 Q86 350 77 348 Q72 332 78 316 Z","quad"],
+  ["M87 238 Q97 246 98 264 L94 302 Q88 274 87 238 Z","adductor"],
+  ["M64 364 Q59 390 65 414 L73 416 Q78 390 76 364 Z","calf"]
+];
+const BACK = [
+  ["M100 56 L86 66 Q72 78 62 84 Q76 92 86 100 L100 152 Z","trap"],
+  ["M64 82 Q46 84 39 102 Q36 120 44 130 Q53 118 58 104 Q63 94 72 88 Z","rdelt"],
+  ["M66 104 Q61 142 75 178 Q87 198 99 202 L99 154 L85 102 Q75 96 66 104 Z","lats"],
+  ["M43 124 Q36 144 39 164 Q47 170 54 158 Q57 138 53 124 Q48 118 43 124 Z","triceps"],
+  ["M39 168 Q31 192 28 214 L36 219 Q46 196 51 170 Z","forearm"],
+  ["M90 178 Q89 204 90 228 L99 230 L99 178 Z","lowback"],
+  ["M100 234 Q78 228 64 242 Q57 264 69 280 Q86 289 100 280 Z","glute"],
+  ["M61 284 Q57 322 65 348 L78 350 Q88 322 90 286 Q76 292 61 284 Z","ham"],
+  ["M62 360 Q55 382 63 406 Q72 413 79 402 Q83 380 76 360 Z","calf"]
+];
+const FIB_F = ["M96 92 Q80 100 64 106","M96 104 Q80 110 64 114","M96 116 Q82 122 68 122","M64 344 Q66 300 64 252","M74 344 Q78 300 76 248"];
+const FIB_B = ["M70 112 Q78 150 94 190","M78 108 Q86 140 98 170","M92 70 Q80 82 68 86"];
+let figN = 0;
+function figure(back, lv, w, label) {
+  const p = 'fg' + (figN++); const h = Math.round(w * 2.2);
+  let defs = '<defs>';
+  LV.forEach((c, i) => defs += `<radialGradient id="${p}g${i}" cx="38%" cy="30%" r="80%" fx="34%" fy="24%"><stop offset="0" stop-color="${c[0]}"/><stop offset=".45" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></radialGradient>`);
+  defs += `<linearGradient id="${p}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A2C32"/><stop offset=".6" stop-color="#151619"/><stop offset="1" stop-color="#08090A"/></linearGradient>`
+       + `<radialGradient id="${p}h" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#3A3D44"/><stop offset="1" stop-color="#0E0F12"/></radialGradient>`
+       + `<filter id="${p}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000" flood-opacity=".85"/></filter>`
+       + `<linearGradient id="${p}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`;
+  const parts = back ? BACK : FRONT, fib = back ? FIB_B : FIB_F;
+  const half = mirror => {
+    let g = `<g${mirror ? ' transform="translate(200 0) scale(-1 1)"' : ''}><path d="${SIL}" fill="url(#${p}s)"/>`;
+    parts.forEach(([d, k]) => { const l = lv[k] || 0; g += `<path d="${d}" fill="url(#${p}g${l})" stroke="#000" stroke-opacity=".75" stroke-width=".9" filter="url(#${p}d)"/><path d="${d}" fill="url(#${p}r)"/>`; });
+    fib.forEach(d => g += `<path d="${d}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width=".7"/>`);
+    return g + '</g>';
+  };
+  return `<svg viewBox="0 0 200 440" width="${w}" height="${h}" role="img" aria-label="${label}">${defs}<ellipse cx="100" cy="34" rx="19" ry="24" fill="url(#${p}h)"/><path d="M88 52 L112 52 L116 74 L84 74 Z" fill="url(#${p}s)"/>${half(false)}${half(true)}<path d="M100 ${back ? 60 : 88} L100 ${back ? 230 : 226}" stroke="#000" stroke-opacity=".6" stroke-width="1.1"/></svg>`;
+}
+function figLevels(lvOf) {
+  const front = { trap: lvOf('traps'), fdelt: Math.max(lvOf('fdelt'), lvOf('sdelt')), chest: lvOf('chest'), biceps: lvOf('biceps'), forearm: lvOf('forearm'), abs: lvOf('abs'), oblique: lvOf('oblique'), quad: lvOf('quad'), adductor: lvOf('adductor'), calf: lvOf('calf') };
+  const back = { trap: lvOf('traps'), rdelt: Math.max(lvOf('rdelt'), lvOf('sdelt')), lats: lvOf('lats'), triceps: lvOf('triceps'), forearm: lvOf('forearm'), lowback: lvOf('lowback'), glute: lvOf('glute'), ham: lvOf('ham'), calf: lvOf('calf') };
+  return { front, back };
+}
+function sessionTargets(key) {
+  const m = {}; (SESSIONS[key] || { ex: [] }).ex.forEach(e => { for (const [k, w] of Object.entries(e.m)) m[k] = (m[k] || 0) + w; });
+  return k => !m[k] ? 0 : m[k] >= 2 ? 4 : m[k] >= 1 ? 3 : m[k] >= .5 ? 2 : 1;
+}
+
+/* ================= GIAO DIỆN ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const CHECK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>';
+const CHEV = d => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="${d ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'}"/></svg>`;
+
+function render() {
+  figN = 0;
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === UI.tab ? 'page' : 'false'));
+  const v = { today: viewToday, plan: viewPlan, stats: viewStats, body: viewBody }[UI.tab]();
+  $('#main').innerHTML = v;
+}
+
+function viewToday() {
+  const s = UI.date, t = todayStr(), w = weekOf(s), key = sessionKeyFor(s), sess = SESSIONS[key];
+  const daysToTet = diffDays(t, TET);
+  // Dải ngày của tuần chứa ngày đang xem
+  const mon = addDays(s, -dow(s));
+  let strip = `<div class="daystrip"><button class="iconbtn" data-act="day" data-n="-7" aria-label="Tuần trước">${CHEV(0)}</button>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(mon, i), k = plannedSession(d);
+    strip += `<button class="day${d === t ? ' today' : ''}${isTrained(d) ? ' done' : ''}" data-act="goto" data-d="${d}" ${d === s ? 'aria-current="date"' : ''} aria-label="${fmtDate(d)}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span style="font-size:8px">${k ? esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng')) : '·'}</span><i></i></button>`;
+  }
+  strip += `<button class="iconbtn" data-act="day" data-n="7" aria-label="Tuần sau">${CHEV(1)}</button></div>`;
+
+  const status = w < 0 ? `Plan bắt đầu ${short(PLAN_START)}` : w > 11 ? 'Plan 11 tuần đã xong' : `Tuần ${w} · ${PHASE[phaseOf(w)]}`;
+  let html = `<div class="between"><span class="eyebrow">${fmtDate(s)}${s === t ? ' · hôm nay' : ''}</span><span class="mono small dim">${daysToTet > 0 ? 'Tết còn ' + daysToTet + ' ngày' : 'Chúc mừng năm mới'}</span></div>${strip}`;
+
+  const lv = sessionTargets(key); const L = figLevels(lv);
+  const showBack = ['pullA','pullB'].includes(key);
+  const ib = INBODY_DAYS[s] ? `<span class="chip" style="background:#0F2A18;color:var(--good)">${INBODY_DAYS[s]} · sáng lúc đói</span>` : '';
+  html += `<section class="hero"><div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:0">
+    <h1>${esc(sess.name)}</h1>
+    <span style="font-size:13px;font-weight:600;color:var(--acc)">${esc(sess.tag)} · ${esc(sess.focus)}</span>
+    <span class="small muted" style="line-height:1.5">${w >= 0 && w <= 11 ? esc(WEEK_NOTE[w]) : status}</span>
+    <div class="row" style="flex-wrap:wrap;margin-top:auto;gap:6px">
+      <span class="chip acc">${status}</span>${sess.dur ? `<span class="chip">${sess.dur}</span>` : ''}${sess.ex.length && w >= 0 && w <= 11 ? `<span class="chip">RIR bài chính ${WEEK_RIR[w]}</span>` : ''}${ib}
+    </div></div>
+    ${sess.ex.length ? `<div style="flex-shrink:0;width:96px;display:flex;align-items:center;justify-content:center">${figure(showBack, showBack ? L.back : L.front, 92, 'Nhóm cơ của buổi ' + sess.name)}</div>` : ''}
+  </section>`;
+
+  if (key === 'ball') {
+    const b = (S.logs[s] && S.logs[s].ball) || {};
+    html += `<div class="card"><span class="small muted">Ghi lại hôm nay đã làm gì</span>
+      <div class="seg">${[['ball','Đá bóng'],['run','Chạy Z2'],['none','Nghỉ']].map(([k, n]) => `<button aria-pressed="${b.type === k}" data-act="ball" data-k="${k}">${n}</button>`).join('')}</div>
+      <label class="small dim" for="ballMin">Số phút</label><input class="field" id="ballMin" type="number" inputmode="numeric" placeholder="${b.type === 'run' ? '30–45' : '90'}" value="${esc(b.min || '')}" data-act="ballMin">
+      <span class="tiny dim">Chạy nhẹ: nói chuyện được thành câu. Chân đau nhiều sau trận thì bỏ bài chân thứ 6 hoặc cắt còn 1 bài.</span></div>`;
+  } else if (key === 'rest' || !sess.ex.length) {
+    html += `<div class="card"><span class="muted" style="line-height:1.6">Hôm nay nghỉ. Ngủ 7–8 tiếng, protein khoảng 150–160 g, creatine 5 g như thường lệ.</span></div>`;
+  } else {
+    const log = getLog(s);
+    exList(s, key).forEach((ex, i) => html += exCard(ex, i, log, s, w));
+    const n = doneSets(log), total = Object.values(log.ex).reduce((a, e) => a + e.sets.length, 0);
+    html += `<button class="btn primary" style="height:52px" data-act="finish">${log.done ? 'Đã hoàn thành buổi · ' : 'Hoàn thành buổi · '}${n}/${total} set</button>`;
+  }
+  html += `<label class="small dim" for="swap">Đổi buổi cho ngày này</label><select class="field" id="swap" data-act="swap">${Object.entries(SESSIONS).map(([k, v]) => `<option value="${k}" ${k === key ? 'selected' : ''}>${esc(v.name)}${k === plannedSession(s) ? ' (theo lịch)' : ''}</option>`).join('')}</select>`;
+  return html;
+}
+
+function exCard(ex, i, log, s, w) {
+  const e = log.ex[ex.id] || (log.ex[ex.id] = { v: defaultVariant(ex, w), sets: Array.from({ length: setCount(ex, w) }, () => ({ kg:'', rep:'', rir:'', done:false })) });
+  const done = e.sets.filter(x => x.done).length, open = UI.open === ex.id;
+  const reps = repsFor(ex, w), rir = rirFor(ex, w);
+  let h = `<article class="ex${open ? ' open' : ''}${done === e.sets.length ? ' complete' : ''}">
+    <button class="exhead" data-act="toggle" data-id="${ex.id}" aria-expanded="${open}">
+      <span class="exnum">${pad(i + 1)}</span>
+      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><b style="font-size:15px">${esc(exName(ex, e.v))}</b><span class="small dim">${e.sets.length} × ${reps} · nghỉ ${ex.rest}${ex.leg ? ' · chân nhẹ' : ''}</span></span>
+      <span class="exprog">${done}/${e.sets.length}</span></button>`;
+  if (open) {
+    const hint = upHint(ex, e.v, s);
+    h += `<div class="exbody">`;
+    if (hint) h += `<div class="hint${hint.up ? ' up' : ''}">Lần trước (${short(hint.last.date)}): ${hint.last.sets.map(x => `${x.kg}×${x.rep}`).join(', ')}${hint.up ? `. Đã chạm ${reps.split('–').pop()} rep mọi set: tăng ${ex.inc}.` : '.'}</div>`;
+    h += `<div class="setgrid sethead"><span>SET</span><span>KG</span><span>REP</span><span>RIR</span><span></span></div>`;
+    e.sets.forEach((x, j) => {
+      const dc = x.done ? ' done' : '';
+      h += `<div class="setgrid"><span class="setn${x.done ? ' on' : ''}">${j + 1}</span>
+        <input class="cell mono${dc}" type="number" inputmode="decimal" step="0.5" aria-label="Kg set ${j + 1}" placeholder="kg" value="${esc(x.kg)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="kg">
+        <input class="cell mono${dc}" type="number" inputmode="numeric" aria-label="Rep set ${j + 1}" placeholder="${esc(reps)}" value="${esc(x.rep)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="rep">
+        <input class="cell mono${dc}" type="number" inputmode="numeric" aria-label="RIR set ${j + 1}" placeholder="${esc(rir)}" value="${esc(x.rir)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="rir">
+        <button class="check" aria-pressed="${x.done}" aria-label="Xong set ${j + 1}" data-act="done" data-id="${ex.id}" data-j="${j}">${CHECK}</button></div>`;
+    });
+    h += `<div class="row" style="flex-wrap:wrap;gap:4px 16px"><button class="linkbtn" data-act="addset" data-id="${ex.id}">+ Thêm set</button>${e.sets.length > 1 ? `<button class="linkbtn" style="color:var(--dim)" data-act="delset" data-id="${ex.id}">Bớt 1 set</button>` : ''}${ex.alt ? `<button class="linkbtn" data-act="variant" data-id="${ex.id}">Đổi sang: ${esc(exName(ex, e.v ? 0 : 1))}</button>` : ''}</div>`;
+    if (ex.tip) h += `<div class="hint">${esc(ex.tip)} RIR mục tiêu ${rir}.</div>`;
+    h += `</div>`;
+  }
+  return h + `</article>`;
+}
+
+function viewPlan() {
+  const t = todayStr();
+  let h = `<h1>Lịch 11 tuần</h1><span class="small muted">20/11/2026 → 5/2/2027 · chạm một ngày để mở buổi tập. Gạch xanh dưới ô là ngày đo InBody.</span>`;
+  for (let w = 0; w <= 11; w++) {
+    const start = w === 0 ? addDays(PLAN_START, -4) : addDays(W1, (w - 1) * 7);
+    const tag = w === 4 || w === 8 ? 'Giảm tải' : w === 0 ? 'Khởi động' : w === 11 ? 'Về đích' : PHASE[phaseOf(w)];
+    const cur = weekOf(t) === w;
+    h += `<section class="card" style="${cur ? 'border-color:#6A2A0E' : ''}"><div class="between"><b>Tuần ${w} <span class="dim small" style="font-weight:500">${short(w === 0 ? PLAN_START : start)}–${short(w === 11 ? PLAN_END : addDays(start, 6))}</span></b><span class="chip${cur ? ' acc' : ''}">${tag}</span></div><div class="week">`;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, i), k = plannedSession(d);
+      if (!k) { h += `<span class="wday empty"></span>`; continue; }
+      const cls = isTrained(d) ? ' done' : (d < t && SESSIONS[k].ex.length ? ' miss' : '');
+      h += `<button class="wday${cls}${d === t ? ' today' : ''}${INBODY_DAYS[d] ? ' ib' : ''}" data-act="open" data-d="${d}" aria-label="${fmtDate(d)} ${SESSIONS[k].name}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span>${esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng'))}</span></button>`;
+    }
+    h += `</div></section>`;
+  }
+  return h;
+}
+
+function lineChart(points, opts) {
+  // points: [{x: dateStr, y: number}]
+  const W = 340, H = 150, P = { l: 34, r: 10, t: 12, b: 22 };
+  if (points.length < 1) return `<p class="small dim">${opts.empty}</p>`;
+  const xs = points.map(p => D(p.x).getTime()); let x0 = Math.min(...xs), x1 = Math.max(...xs); if (x1 === x0) { x0 -= 864e5 * 3; x1 += 864e5 * 3; }
+  let ys = points.map(p => p.y); if (opts.band) ys = ys.concat(opts.band);
+  let y0 = Math.min(...ys), y1 = Math.max(...ys); const padY = Math.max(.5, (y1 - y0) * .15); y0 = Math.floor(y0 - padY); y1 = Math.ceil(y1 + padY);
+  const X = v => P.l + (v - x0) / (x1 - x0) * (W - P.l - P.r), Y = v => P.t + (1 - (v - y0) / (y1 - y0)) * (H - P.t - P.b);
+  let g = '';
+  for (let i = 0; i <= 3; i++) { const v = y0 + (y1 - y0) * i / 3; g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1C1C1F"/><text x="${P.l - 6}" y="${Y(v) + 3}" text-anchor="end">${(Math.round(v * 10) / 10)}</text>`; }
+  if (opts.band) g += `<rect x="${P.l}" width="${W - P.l - P.r}" y="${Y(opts.band[1])}" height="${Y(opts.band[0]) - Y(opts.band[1])}" fill="#4ADE80" fill-opacity=".1"/><text x="${W - P.r - 2}" y="${Y(opts.band[1]) - 3}" text-anchor="end" style="fill:#4ADE80">mục tiêu</text>`;
+  const sorted = points.slice().sort((a, b) => a.x < b.x ? -1 : 1);
+  const path = sorted.map((p, i) => `${i ? 'L' : 'M'}${X(D(p.x).getTime()).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(' ');
+  const area = path + ` L${X(D(sorted[sorted.length - 1].x).getTime()).toFixed(1)} ${H - P.b} L${X(D(sorted[0].x).getTime()).toFixed(1)} ${H - P.b} Z`;
+  const last = sorted[sorted.length - 1];
+  g += `<path d="${area}" fill="url(#ag)"/><path d="${path}" fill="none" stroke="#FF6A26" stroke-width="2"/>`;
+  sorted.forEach(p => g += `<circle cx="${X(D(p.x).getTime())}" cy="${Y(p.y)}" r="2.5" fill="#FF8A4A"/>`);
+  g += `<circle cx="${X(D(last.x).getTime())}" cy="${Y(last.y)}" r="5" fill="#FF6A26" stroke="#050505" stroke-width="2"/>`;
+  g += `<text x="${P.l}" y="${H - 6}">${short(ymd(new Date(x0)))}</text><text x="${W - P.r}" y="${H - 6}" text-anchor="end">${short(ymd(new Date(x1)))}</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(opts.label)}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6A26" stop-opacity=".35"/><stop offset="1" stop-color="#FF6A26" stop-opacity="0"/></linearGradient></defs>${g}</svg>`;
+}
+
+function viewStats() {
+  const t = todayStr();
+  const trainedDates = Object.keys(S.logs).filter(isTrained).sort();
+  const month = t.slice(0, 7);
+  // chuỗi: số buổi liên tiếp không bỏ buổi theo lịch
+  let streak = 0;
+  for (let d = t, guard = 0; guard < 120; d = addDays(d, -1), guard++) {
+    const k = plannedSession(d); const need = k && (SESSIONS[k].ex.length || k === 'ball');
+    if (isTrained(d)) { streak++; continue; }
+    if (d === t) continue;
+    if (need) break;
+    if (d < PLAN_START && !trainedDates.some(x => x < d)) break;
+  }
+  const bw = S.body.slice().sort((a, b) => a.date < b.date ? -1 : 1).filter(b => b.weight);
+  const lastW = bw[bw.length - 1], ref = bw.filter(b => b.date <= addDays(t, -30)).pop() || bw[0];
+  const dW = lastW && ref && lastW !== ref ? (lastW.weight - ref.weight) : 0;
+
+  const days = UI.range === 0 ? Math.max(7, diffDays(trainedDates[0] || t, t) + 1) : UI.range;
+  const from = addDays(t, -(days - 1));
+  const vol = volume(from, t), plan = planVolume(from < PLAN_START ? PLAN_START : from, t);
+  const L = figLevels(k => levelOf(vol[k], days));
+
+  let h = `<h1>Thống kê</h1>
+  <div class="tiles">
+    <div class="tile"><span>BUỔI TẬP</span><b>${trainedDates.length}</b></div>
+    <div class="tile"><span>THÁNG NÀY</span><b>${trainedDates.filter(d => d.startsWith(month)).length}</b></div>
+    <div class="tile"><span>CHUỖI</span><b>${streak}</b></div>
+    <div class="tile"><span>CÂN 30N</span><b style="color:${dW < 0 ? 'var(--good)' : dW > 0 ? 'var(--acc2)' : 'var(--text)'}">${dW > 0 ? '+' : dW < 0 ? '−' : ''}${Math.abs(dW).toFixed(1)}</b></div>
+  </div>
+  <section class="bodymap"><div class="between"><b style="font-size:13px;letter-spacing:1px">VOLUME THEO NHÓM CƠ</b>
+    <div class="legend">ít ${LV.map(c => `<i style="background:linear-gradient(90deg,${c[2]},${c[1]})"></i>`).join('')} nhiều</div></div>
+    <div class="seg">${[[7,'7 ngày'],[30,'30 ngày'],[90,'90 ngày'],[0,'Tất cả']].map(([v, n]) => `<button aria-pressed="${UI.range === v}" data-act="range" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="figs"><figure>${figure(false, L.front, 150, 'Mặt trước')}<figcaption>Trước</figcaption></figure><figure>${figure(true, L.back, 150, 'Mặt sau')}<figcaption>Sau</figcaption></figure></div>
+    <span class="tiny dim">Màu theo số hiệp mỗi tuần: dưới 4 · 4–7 · 8–11 · từ 12. Bài phụ tính nửa hiệp cho nhóm cơ hỗ trợ.</span>
+  </section>`;
+
+  const rows = Object.keys(MUSCLES).map(k => ({ k, v: vol[k], p: plan[k] })).filter(r => r.v > 0 || r.p > 0).sort((a, b) => b.v - a.v || b.p - a.p);
+  h += `<section class="card"><div class="between"><b>Hiệp đã tập / kế hoạch</b><span class="tiny dim">${UI.range ? UI.range + ' ngày' : 'tất cả'}</span></div><div class="bars">`;
+  if (!rows.length) h += `<span class="small dim">Chưa có dữ liệu trong khoảng này.</span>`;
+  rows.forEach(r => {
+    const lvl = levelOf(r.v, days), c = LV[Math.max(1, lvl)], pct = r.p ? Math.min(100, r.v / r.p * 100) : (r.v ? 100 : 0);
+    h += `<div class="bar"><span>${MUSCLES[r.k]}</span><div class="track"><div style="width:${pct}%;background:linear-gradient(90deg,${c[2]},${c[1]},${c[0]})"></div></div><span class="mono small" style="text-align:right;color:#D4D4D8">${r.p ? `${+r.v.toFixed(1)}/${+r.p.toFixed(1)}` : `${+r.v.toFixed(1)} hiệp`}</span></div>`;
+  });
+  h += `</div></section>`;
+
+  // Nhật ký: 12 tuần x 7 ngày
+  h += `<section class="card"><b>Nhật ký 11 tuần</b><div class="heat"><span></span>${Array.from({ length: 12 }, (_, w) => `<span style="text-align:center">${w}</span>`).join('')}`;
+  for (let i = 0; i < 7; i++) {
+    h += `<span>${DOW[i]}</span>`;
+    for (let w = 0; w < 12; w++) {
+      const d = w === 0 ? addDays(W1, -7 + i) : addDays(W1, (w - 1) * 7 + i);
+      const n = S.logs[d] ? Math.max(doneSets(S.logs[d]), S.logs[d].ball ? 8 : 0) : 0;
+      const c = n === 0 ? '#151517' : n < 6 ? LV[1][1] : n < 12 ? LV[2][1] : n < 18 ? LV[3][1] : LV[4][1];
+      h += `<i style="background:${c}" title="${short(d)}"></i>`;
+    }
+  }
+  h += `</div></section>`;
+
+  // Sức mạnh: e1RM theo bài
+  const lifts = ['bench','ohp','csrow','pullup','latpd','dbsp','incbb','squat'];
+  const has = lifts.filter(id => Object.values(S.logs).some(l => l.ex && l.ex[id] && l.ex[id].sets.some(x => x.done && x.kg && x.rep)));
+  const lift = UI.lift && lifts.includes(UI.lift) ? UI.lift : (has[0] || 'bench');
+  const pts = Object.entries(S.logs).filter(([, l]) => l.ex && l.ex[lift]).map(([d, l]) => {
+    const best = Math.max(0, ...l.ex[lift].sets.filter(x => x.done && x.kg && x.rep).map(x => (+x.kg) * (1 + (+x.rep) / 30)));
+    return { x: d, y: Math.round(best * 10) / 10 };
+  }).filter(p => p.y > 0);
+  h += `<section class="card"><div class="between"><b>Sức mạnh (1RM ước tính)</b></div>
+    <select class="field" data-act="lift" aria-label="Chọn bài">${lifts.map(id => `<option value="${id}" ${id === lift ? 'selected' : ''}>${esc(ALLEX[id].name)}</option>`).join('')}</select>
+    ${lineChart(pts, { label: '1RM ước tính ' + ALLEX[lift].name, empty: 'Chưa có set nào của bài này. Mục tiêu đến Tết: +5–10% tạ ở bài chính, cùng số rep.' })}
+    ${pts.length > 1 ? `<span class="small muted">Từ ${pts[0].y} lên ${pts[pts.length - 1].y} kg (${((pts[pts.length - 1].y / pts[0].y - 1) * 100).toFixed(1)}%). Công thức Epley: kg × (1 + rep/30).</span>` : ''}
+  </section>`;
+  return h;
+}
+
+function viewBody() {
+  const list = S.body.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+  const first = list[list.length - 1], last = list[0];
+  const T = [['weight','Cân nặng','kg',[73,74],'down'],['bfm','Khối mỡ','kg',[13,14],'down'],['pbf','% mỡ','%',[17.5,19],'down'],['smm','Cơ xương (SMM)','kg',[33.8,34.4],'up']];
+  let h = `<h1>Cơ thể</h1><section class="card"><div class="between"><b>Mục tiêu 5/2/2027</b><span class="tiny dim">so với ${short(first.date)}</span></div>`;
+  T.forEach(([k, n, u, band, dir]) => {
+    const latest = list.find(b => b[k] !== '' && b[k] != null);
+    const v = latest ? +latest[k] : null, base = +first[k];
+    const span = Math.abs(base - (dir === 'down' ? band[1] : band[0])) || 1;
+    const prog = v == null ? 0 : Math.max(0, Math.min(100, (dir === 'down' ? base - v : v - base) / span * 100));
+    h += `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:baseline"><span class="small">${n}</span><span class="mono small">${v == null ? '–' : v}${u} <span class="dim">→ ${band[0]}–${band[1]}${u}</span></span><div class="track" style="grid-column:1/-1"><div style="width:${prog}%;background:linear-gradient(90deg,#A3300A,#FF6A26,#FFC08A)"></div></div></div>`;
+  });
+  h += `</section>`;
+  h += `<section class="card"><b>Cân nặng</b>${lineChart(list.filter(b => b.weight).map(b => ({ x: b.date, y: +b.weight })), { band: [73, 74], label: 'Biểu đồ cân nặng', empty: 'Chưa có số đo.' })}<span class="tiny dim">Đo cùng điều kiện: buổi sáng lúc đói, sau khi đi vệ sinh. Creatine có thể làm tăng 0.5–1 kg nước.</span></section>`;
+
+  h += `<section class="card"><b>Thêm số đo</b>
+    <form id="bodyForm" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+      <label class="small dim" style="grid-column:1/-1">Ngày<input class="field" type="date" id="bDate" value="${todayStr()}" required></label>
+      <label class="small dim">Cân nặng (kg)<input class="field mono" type="number" step="0.1" inputmode="decimal" id="bWeight"></label>
+      <label class="small dim">Vòng eo (cm)<input class="field mono" type="number" step="0.1" inputmode="decimal" id="bWaist"></label>
+      <label class="small dim">Khối mỡ BFM (kg)<input class="field mono" type="number" step="0.1" inputmode="decimal" id="bBfm"></label>
+      <label class="small dim">% mỡ PBF<input class="field mono" type="number" step="0.1" inputmode="decimal" id="bPbf"></label>
+      <label class="small dim" style="grid-column:1/-1">Cơ xương SMM (kg)<input class="field mono" type="number" step="0.1" inputmode="decimal" id="bSmm"></label>
+      <button class="btn primary" style="grid-column:1/-1" type="submit">Lưu số đo</button>
+    </form></section>`;
+
+  h += `<section class="card"><b>Lịch sử</b>`;
+  list.forEach(b => h += `<div class="between" style="border-top:1px solid var(--line);padding-top:8px"><div style="display:flex;flex-direction:column;gap:2px"><span class="mono small">${short(b.date)}/${D(b.date).getFullYear()}</span><span class="tiny dim">${[b.weight && b.weight + ' kg', b.bfm && 'mỡ ' + b.bfm + ' kg', b.pbf && b.pbf + '%', b.smm && 'SMM ' + b.smm, b.waist && 'eo ' + b.waist + ' cm'].filter(Boolean).join(' · ')}</span></div><button class="linkbtn" style="color:var(--dim)" data-act="delbody" data-d="${b.date}">Xoá</button></div>`);
+  h += `</section>`;
+
+  h += `<section class="card"><b>Sao lưu dữ liệu</b><span class="small muted" style="line-height:1.5">Dữ liệu chỉ nằm trên iPhone này. Xuất file sao lưu mỗi tuần, nhất là trước khi đổi máy hoặc xoá app.</span>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="export">Xuất file</button><button class="btn" data-act="copy">Sao chép</button><label class="btn" style="display:inline-flex;align-items:center">Nhập file<input type="file" accept="application/json,.json" id="importFile" style="display:none"></label></div>
+    <a id="dl" class="small" style="display:none"></a></section>`;
+  return h;
+}
+
+/* ================= SỰ KIỆN ================= */
+let audio;
+function beep() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); [0, .25, .5].forEach(t => { const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = 880; g.gain.value = .15; o.connect(g); g.connect(audio.destination); o.start(audio.currentTime + t); o.stop(audio.currentTime + t + .15); }); } catch (e) {} }
+const timer = { end: 0, total: 0, beeped: false };
+function startTimer(sec, label) { timer.end = Date.now() + sec * 1000; timer.total = sec; timer.beeped = false; $('#timerL').textContent = label; $('#timer').classList.add('show'); tick(); try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} }
+function tick() {
+  if (!$('#timer').classList.contains('show')) return;
+  const left = Math.round((timer.end - Date.now()) / 1000), a = Math.abs(left);
+  $('#timerT').textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + pad(a % 60);
+  $('#timerBar').style.width = Math.min(100, (1 - Math.max(0, left) / timer.total) * 100) + '%';
+  $('#timer').classList.toggle('over', left <= 0);
+  if (left <= 0 && !timer.beeped) { timer.beeped = true; beep(); $('#timerL').textContent = 'Hết giờ nghỉ, vào set tiếp'; }
+}
+setInterval(tick, 250);
+
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function ask(msg) { return new Promise(res => { const d = $('#dlg'); $('#dlgText').textContent = msg; const done = v => { d.close(); res(v); }; $('#dlgYes').onclick = () => done(true); $('#dlgNo').onclick = () => done(false); try { d.showModal(); } catch (e) { res(true); } }); }
+
+document.addEventListener('click', async ev => {
+  const nb = ev.target.closest('nav button'); if (nb) { UI.tab = nb.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const b = ev.target.closest('[data-act]'); if (!b || b.tagName === 'INPUT' || b.tagName === 'SELECT') return;
+  const act = b.dataset.act, s = UI.date;
+  if (act === 'day') { UI.date = addDays(s, +b.dataset.n); UI.open = null; }
+  else if (act === 'goto') { UI.date = b.dataset.d; UI.open = null; }
+  else if (act === 'open') { UI.date = b.dataset.d; UI.tab = 'today'; UI.open = null; window.scrollTo(0, 0); }
+  else if (act === 'toggle') { UI.open = UI.open === b.dataset.id ? null : b.dataset.id; }
+  else if (act === 'done') {
+    const log = getLog(s), e = log.ex[b.dataset.id], x = e.sets[+b.dataset.j], ex = ALLEX[b.dataset.id];
+    x.done = !x.done;
+    if (x.done) {
+      const w = weekOf(s);
+      if (x.rep === '') x.rep = String(parseInt(repsFor(ex, w), 10));
+      if (x.kg === '' && +b.dataset.j > 0) x.kg = e.sets[+b.dataset.j - 1].kg;
+      if (+b.dataset.j + 1 < e.sets.length && e.sets[+b.dataset.j + 1].kg === '') e.sets[+b.dataset.j + 1].kg = x.kg;
+      const allDone = e.sets.every(y => y.done);
+      if (allDone) { const list = exList(s, log.session); const i = list.findIndex(q => q.id === ex.id); const nxt = list.slice(i + 1).find(q => !(log.ex[q.id] && log.ex[q.id].sets.every(y => y.done))); UI.open = nxt ? nxt.id : null; startTimer(restSec(ex), nxt ? 'Nghỉ trước ' + nxt.name : 'Xong bài cuối'); }
+      else startTimer(restSec(ex), `Nghỉ trước set ${+b.dataset.j + 2}`);
+    }
+    commit(s);
+  }
+  else if (act === 'addset') { const e = getLog(s).ex[b.dataset.id]; const l = e.sets[e.sets.length - 1]; e.sets.push({ kg: l ? l.kg : '', rep:'', rir:'', done:false }); commit(s); }
+  else if (act === 'delset') { const e = getLog(s).ex[b.dataset.id]; e.sets.pop(); commit(s); }
+  else if (act === 'variant') {
+    const e = getLog(s).ex[b.dataset.id]; e.v = e.v ? 0 : 1;
+    const last = lastSets(b.dataset.id, e.v, s); e.sets.forEach(x => { if (!x.done) x.kg = last ? last.sets[0].kg : ''; }); commit(s);
+  }
+  else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) toast(`Xong ${SESSIONS[log.session].name}: ${doneSets(log)} set. Nhớ ăn đủ protein.`); }
+  else if (act === 'ball') { const prev = (S.logs[s] && S.logs[s].ball) || {}; S.logs[s] = Object.assign(S.logs[s] || { session: 'ball', ex: {} }, { ball: { type: b.dataset.k, min: prev.min || '' }, done: b.dataset.k !== 'none' }); if (b.dataset.k === 'none') delete S.logs[s].ball; save(); }
+  else if (act === 'range') { UI.range = +b.dataset.v; }
+  else if (act === 'timerAdd') { timer.end += 15000; timer.total += 15; timer.beeped = false; tick(); return; }
+  else if (act === 'timerStop') { $('#timer').classList.remove('show'); return; }
+  else if (act === 'delbody') { if (!(await ask('Xoá số đo ngày ' + short(b.dataset.d) + '?'))) return; S.body = S.body.filter(x => x.date !== b.dataset.d); save(); }
+  else if (act === 'export' || act === 'copy') {
+    const json = JSON.stringify(Object.assign({ app: 'tt27', at: new Date().toISOString() }, S));
+    if (act === 'copy') { try { await navigator.clipboard.writeText(json); toast('Đã sao chép dữ liệu. Dán vào Ghi chú để giữ.'); } catch (e) { toast('Không sao chép được, dùng Xuất file'); } return; }
+    const a = $('#dl'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = `tap-tet-${todayStr()}.json`; a.textContent = 'Bấm vào đây để lưu file sao lưu'; a.style.display = 'block'; a.click(); return;
+  }
+  else return;
+  render();
+});
+
+document.addEventListener('input', ev => {
+  const el = ev.target; if (el.dataset.act !== 'set') return;
+  const e = getLog(UI.date).ex[el.dataset.id]; e.sets[+el.dataset.j][el.dataset.f] = el.value; commit(UI.date);
+});
+document.addEventListener('change', async ev => {
+  const el = ev.target, s = UI.date;
+  if (el.dataset.act === 'swap') {
+    if (S.logs[s] && doneSets(S.logs[s]) && !(await ask('Ngày này đã có set được ghi. Đổi buổi sẽ xoá các set đó. Tiếp tục?'))) { render(); return; }
+    delete S.logs[s]; delete UI.drafts[s];
+    if (el.value !== plannedSession(s)) { S.logs[s] = buildLog(s, el.value); }
+    save(); UI.open = null; render();
+  } else if (el.dataset.act === 'ballMin') {
+    S.logs[s] = S.logs[s] || { session: 'ball', ex: {} }; S.logs[s].ball = Object.assign({ type: 'ball' }, S.logs[s].ball, { min: el.value }); S.logs[s].done = true; save(); render();
+  } else if (el.dataset.act === 'lift') { UI.lift = el.value; render(); }
+  else if (el.id === 'importFile' && el.files[0]) {
+    try {
+      const data = JSON.parse(await el.files[0].text());
+      if (!data.logs || !data.body) throw new Error();
+      if (!(await ask('Thay toàn bộ dữ liệu hiện tại bằng file sao lưu này?'))) return;
+      S = { logs: data.logs, body: data.body }; save(); toast('Đã nhập dữ liệu'); render();
+    } catch (e) { toast('File không đúng định dạng sao lưu của app'); }
+  }
+});
+document.addEventListener('submit', ev => {
+  if (ev.target.id !== 'bodyForm') return; ev.preventDefault();
+  const n = id => { const v = $(id).value; return v === '' ? '' : +v; };
+  const entry = { date: $('#bDate').value, weight: n('#bWeight'), waist: n('#bWaist'), bfm: n('#bBfm'), pbf: n('#bPbf'), smm: n('#bSmm') };
+  if (!entry.date || [entry.weight, entry.waist, entry.bfm, entry.pbf, entry.smm].every(v => v === '')) { toast('Nhập ít nhất một số đo'); return; }
+  S.body = S.body.filter(b => b.date !== entry.date).concat(entry); save(); toast('Đã lưu số đo ' + short(entry.date)); render();
+});
+
+render();
+if ('serviceWorker' in navigator && location.protocol === 'https:') { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+</script>
+</body>
+</html>
