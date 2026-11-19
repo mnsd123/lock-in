@@ -221,6 +221,7 @@ const SESSIONS = {
     { id:'pallof', name:'Pallof press (mỗi bên)', type:'core', sets:[2,2,3], reps:['10','10','10'], rest:'0:45', inc:'+1 nấc', m:{oblique:1,abs:.5} }
   ]},
   ball: { name:'Đá bóng', tag:'Thứ 4', focus:'Đá bóng cố định; nghỉ đá thì chạy nhẹ Z2 30–45 phút', ex:[] },
+  free: { name:'Buổi tự do', tag:'Tập thêm', focus:'Tự chọn bài tập', dur:'tuỳ bạn', ex:[] },
   rest: { name:'Nghỉ', tag:'Hồi phục', focus:'Nghỉ hoàn toàn: ngủ đủ, ăn đủ protein, đi bộ nhẹ nếu muốn', ex:[] }
 };
 const ALLEX = {}; Object.values(SESSIONS).forEach(s => s.ex.forEach(e => ALLEX[e.id] = e));
@@ -286,6 +287,8 @@ function exList(s, key) {
   const w = weekOf(s); const sess = SESSIONS[key];
   let list = sess.ex;
   if (w === 11 && key === 'pullA') list = list.filter(e => !e.leg);
+  const log = S.logs[s] || UI.drafts[s];
+  if (log && log.ex && log.session === key) list = list.concat(Object.keys(log.ex).filter(id => ALLEX[id] && !list.some(e => e.id === id)).map(id => ALLEX[id]));
   return list;
 }
 function setCount(ex, w) {
@@ -600,8 +603,8 @@ function viewToday() {
   const mon = addDays(s, -dow(s));
   let strip = `<div class="daystrip"><button class="iconbtn" data-act="day" data-n="-7" aria-label="Tuần trước">${CHEV(0)}</button>`;
   for (let i = 0; i < 7; i++) {
-    const d = addDays(mon, i), k = plannedSession(d);
-    strip += `<button class="day${d === t ? ' today' : ''}${isTrained(d) ? ' done' : ''}" data-act="goto" data-d="${d}" ${d === s ? 'aria-current="date"' : ''} aria-label="${fmtDate(d)}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span style="font-size:8px">${k ? esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng')) : '·'}</span><i></i></button>`;
+    const d = addDays(mon, i), k = (S.logs[d] && S.logs[d].session) || plannedSession(d);
+    strip += `<button class="day${d === t ? ' today' : ''}${isTrained(d) ? ' done' : ''}" data-act="goto" data-d="${d}" ${d === s ? 'aria-current="date"' : ''} aria-label="${fmtDate(d)}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span style="font-size:8px">${k ? esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng').replace('Buổi tự do','Tự do')) : '·'}</span><i></i></button>`;
   }
   strip += `<button class="iconbtn" data-act="day" data-n="7" aria-label="Tuần sau">${CHEV(1)}</button></div>`;
 
@@ -627,11 +630,18 @@ function viewToday() {
       <div class="seg">${[['ball','Đá bóng'],['run','Chạy Z2'],['none','Nghỉ']].map(([k, n]) => `<button aria-pressed="${b.type === k}" data-act="ball" data-k="${k}">${n}</button>`).join('')}</div>
       <label class="small dim" for="ballMin">Số phút</label><input class="field" id="ballMin" type="number" inputmode="numeric" placeholder="${b.type === 'run' ? '30–45' : '90'}" value="${esc(b.min || '')}" data-act="ballMin">
       <span class="tiny dim">Chạy nhẹ: nói chuyện được thành câu. Chân đau nhiều sau trận thì bỏ bài chân thứ 6 hoặc cắt còn 1 bài.</span></div>`;
-  } else if (key === 'rest' || !sess.ex.length) {
-    html += `<div class="card"><span class="muted" style="line-height:1.6">Hôm nay nghỉ. Ngủ 7–8 tiếng, protein khoảng 150–160 g, creatine 5 g như thường lệ.</span></div>`;
+  } else if (key === 'rest') {
+    html += `<div class="card"><span class="muted" style="line-height:1.6">${plannedSession(s) === 'rest' ? 'Hôm nay nghỉ theo lịch. Ngủ 7–8 tiếng, protein khoảng 150–160 g, creatine 5 g như thường lệ.' : 'Ngày này không có lịch tập.'}</span></div>
+    <section class="card"><b>Thêm buổi tập</b><span class="small muted">Rảnh và muốn tập thêm? Chọn một buổi có sẵn hoặc tự chọn bài.</span>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${['pushA','pushB','pullA','pullB','core'].map(k => `<button class="btn" data-act="addsess" data-k="${k}">${SESSIONS[k].name}</button>`).join('')}<button class="btn primary" data-act="addsess" data-k="free">Buổi tự do</button></div>
+      <span class="tiny dim">Buổi thêm được tính vào thống kê và kỷ lục, không làm lệch lịch các tuần sau.</span></section>`;
   } else {
     const log = getLog(s);
-    exList(s, key).forEach((ex, i) => html += exCard(ex, i, log, s, w));
+    const planned = (SESSIONS[key].ex || []).map(e => e.id);
+    exList(s, key).forEach((ex, i) => html += exCard(ex, i, log, s, w, !planned.includes(ex.id)));
+    if (key === 'free' && !Object.keys(log.ex).length) html += `<div class="card"><span class="small muted">Buổi tự do chưa có bài nào. Chọn bài ở ô bên dưới.</span></div>`;
+    const groups = Object.entries(SESSIONS).filter(([, v]) => v.ex.length);
+    html += `<label class="small dim" for="addEx">Thêm bài vào buổi này</label><select class="field" id="addEx" data-act="addex"><option value="">+ Chọn bài…</option>${groups.map(([k, v]) => `<optgroup label="${esc(v.name)}">${v.ex.filter(e => !log.ex[e.id]).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
     const n = doneSets(log), total = Object.values(log.ex).reduce((a, e) => a + e.sets.length, 0);
     html += `<button class="btn primary" style="height:52px" data-act="finish">${log.done ? 'Đã hoàn thành buổi · ' : 'Hoàn thành buổi · '}${n}/${total} set</button>`;
     if (log.done || n) html += `<button class="btn" data-act="summary">Xem thẻ tổng kết</button>`;
@@ -640,7 +650,7 @@ function viewToday() {
   return html;
 }
 
-function exCard(ex, i, log, s, w) {
+function exCard(ex, i, log, s, w, extra) {
   const e = log.ex[ex.id] || (log.ex[ex.id] = { v: defaultVariant(ex, w), sets: Array.from({ length: setCount(ex, w) }, () => ({ kg:'', rep:'', rir:'', done:false })) });
   const done = e.sets.filter(x => x.done).length, open = UI.open === ex.id;
   const reps = repsFor(ex, w), rir = rirFor(ex, w);
@@ -666,12 +676,13 @@ function exCard(ex, i, log, s, w) {
     });
     h += `<div class="row" style="flex-wrap:wrap;gap:4px 16px"><button class="linkbtn" data-act="addset" data-id="${ex.id}">+ Thêm set</button>${e.sets.length > 1 ? `<button class="linkbtn" style="color:var(--dim)" data-act="delset" data-id="${ex.id}">Bớt 1 set</button>` : ''}${ex.alt ? `<button class="linkbtn" data-act="variant" data-id="${ex.id}">Đổi sang: ${esc(exName(ex, e.v ? 0 : 1))}</button>` : ''}</div>`;
     if (ex.tip) h += `<div class="hint">${esc(ex.tip)} RIR mục tiêu ${rir}.</div>`;
+    if (extra) h += `<button class="linkbtn" style="color:var(--dim);align-self:flex-start" data-act="rmex" data-id="${ex.id}">Xoá bài này khỏi buổi</button>`;
     h += `</div>`;
   }
   return h + `</article>`;
 }
 
-const SESS_COLOR = { pushA: '#FF6A26', pushB: '#FF9A5C', pullA: '#E8B23A', pullB: '#F2D27A', core: '#6F9DF0', ball: '#4ADE80', rest: '#55555C' };
+const SESS_COLOR = { pushA: '#FF6A26', pushB: '#FF9A5C', pullA: '#E8B23A', pullB: '#F2D27A', core: '#6F9DF0', ball: '#4ADE80', free: '#A78BFA', rest: '#55555C' };
 function viewLog() {
   const t = todayStr(), mon = d => addDays(d, -dow(d));
   const dates = Object.keys(S.logs).filter(isTrained).sort();
@@ -701,7 +712,7 @@ function viewLog() {
     }
     h += `<span class="tiny" style="text-align:right;line-height:1.4;font-variant-numeric:tabular-nums">${s7.ton ? fmtKg(s7.ton) : '–'}<br><span class="dim">${s7.sets} set</span></span></div>`;
   });
-  h += `<div class="row tiny dim" style="flex-wrap:wrap;gap:6px 12px">${[['pushA','Push A'],['pushB','Push B'],['pullA','Pull A'],['pullB','Pull B'],['core','Vai – core'],['ball','Bóng / chạy']].map(([k, n]) => `<span class="row" style="gap:4px"><i style="width:10px;height:10px;border-radius:50%;background:${SESS_COLOR[k]}"></i>${n}</span>`).join('')}</div><span class="tiny dim">Chấm càng to, khối lượng nâng (kg × rep) càng lớn.</span></section>`;
+  h += `<div class="row tiny dim" style="flex-wrap:wrap;gap:6px 12px">${[['pushA','Push A'],['pushB','Push B'],['pullA','Pull A'],['pullB','Pull B'],['core','Vai – core'],['free','Tự do'],['ball','Bóng / chạy']].map(([k, n]) => `<span class="row" style="gap:4px"><i style="width:10px;height:10px;border-radius:50%;background:${SESS_COLOR[k]}"></i>${n}</span>`).join('')}</div><span class="tiny dim">Chấm càng to, khối lượng nâng (kg × rep) càng lớn.</span></section>`;
   return h;
 }
 function viewPlan() {
@@ -715,10 +726,10 @@ function viewPlan() {
     const cur = weekOf(t) === w;
     h += `<section class="card" style="${cur ? 'border-color:#6A2A0E' : ''}"><div class="between"><b>Tuần ${w} <span class="dim small" style="font-weight:500">${short(w === 0 ? PLAN_START : start)}–${short(w === 11 ? PLAN_END : addDays(start, 6))}</span></b><span class="chip${cur ? ' acc' : ''}">${tag}</span></div><div class="week">`;
     for (let i = 0; i < 7; i++) {
-      const d = addDays(start, i), k = plannedSession(d);
+      const d = addDays(start, i), k = (isTrained(d) && S.logs[d].session) || plannedSession(d);
       if (!k) { h += `<span class="wday empty"></span>`; continue; }
       const cls = isTrained(d) ? ' done' : (d < t && SESSIONS[k].ex.length ? ' miss' : '');
-      h += `<button class="wday${cls}${d === t ? ' today' : ''}${INBODY_DAYS[d] ? ' ib' : ''}" data-act="open" data-d="${d}" aria-label="${fmtDate(d)} ${SESSIONS[k].name}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span>${esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng'))}</span></button>`;
+      h += `<button class="wday${cls}${d === t ? ' today' : ''}${INBODY_DAYS[d] ? ' ib' : ''}" data-act="open" data-d="${d}" aria-label="${fmtDate(d)} ${SESSIONS[k].name}"><span>${DOW[i]}</span><b>${D(d).getDate()}</b><span>${esc(SESSIONS[k].name.replace('Vai – core','Core').replace('Đá bóng','Bóng').replace('Buổi tự do','Tự do'))}</span></button>`;
     }
     h += `</div></section>`;
   }
@@ -932,6 +943,8 @@ document.addEventListener('click', async ev => {
   }
   else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) { render(); openSummary(s); return; } }
   else if (act === 'summary') { openSummary(s); return; }
+  else if (act === 'addsess') { delete UI.drafts[s]; S.logs[s] = b.dataset.k === 'free' ? { session: 'free', ex: {}, done: false, extra: true } : Object.assign(buildLog(s, b.dataset.k), { extra: true }); save(); UI.open = null; toast('Đã thêm ' + SESSIONS[b.dataset.k].name + ' vào ' + short(s)); }
+  else if (act === 'rmex') { const log = getLog(s); if (log.ex[b.dataset.id].sets.some(x => x.done) && !(await ask('Bài này đã có set được ghi. Xoá khỏi buổi?'))) return; delete log.ex[b.dataset.id]; commit(s); UI.open = null; }
   else if (act === 'usesugg') { const e = getLog(s).ex[b.dataset.id]; e.sets.forEach(x => { if (!x.done) x.kg = b.dataset.kg; }); commit(s); toast('Đã điền ' + b.dataset.kg + ' kg cho các set còn lại'); }
   else if (act === 'map') { UI.map = b.dataset.v; }
   else if (act === 'planView') { UI.planView = b.dataset.v; }
@@ -964,6 +977,11 @@ document.addEventListener('change', async ev => {
   } else if (el.dataset.act === 'ballMin') {
     S.logs[s] = S.logs[s] || { session: 'ball', ex: {} }; S.logs[s].ball = Object.assign({ type: 'ball' }, S.logs[s].ball, { min: el.value }); S.logs[s].done = true; save(); render();
   } else if (el.dataset.act === 'lift') { UI.lift = el.value; render(); }
+  else if (el.dataset.act === 'addex' && el.value) {
+    const ex = ALLEX[el.value], log = getLog(s), w = weekOf(s), v = defaultVariant(ex, w), last = lastSets(ex.id, v, s);
+    log.ex[ex.id] = { v, sets: Array.from({ length: w >= 0 && w <= 11 ? setCount(ex, w) : 3 }, () => ({ kg: last ? last.sets[0].kg : '', rep: '', rir: '', done: false })) };
+    commit(s); UI.open = ex.id; render();
+  }
   else if (el.id === 'importFile' && el.files[0]) {
     try {
       const data = JSON.parse(await el.files[0].text());

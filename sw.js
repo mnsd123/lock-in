@@ -1,6 +1,6 @@
 // Tập Tết 2027 – service worker: chạy được khi không có mạng.
 // Đổi số phiên bản mỗi lần cập nhật app để iPhone tải bản mới.
-const VERSION = 'tt27-v2';
+const VERSION = 'tt27-v3';
 const ASSETS = [
   './',
   './index.html',
