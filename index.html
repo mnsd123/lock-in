@@ -125,6 +125,20 @@ nav button[aria-current="page"]{color:var(--acc);font-weight:700}
 #toast.show{display:block}
 dialog{background:var(--card);color:var(--text);border:1px solid var(--line2);border-radius:20px;padding:18px;max-width:340px}
 dialog::backdrop{background:rgba(0,0,0,.7)}
+.pr{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#F2C14E;color:#1A1200;font-size:9px;font-weight:800;margin-left:3px;vertical-align:2px;font-style:normal}
+.sugg{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0F1A12;border:1px solid #1E3A26;border-radius:12px;padding:10px 12px}
+.sugg b{font-size:16px;color:var(--good)} .sugg div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rankrow{display:grid;grid-template-columns:92px minmax(0,1fr) 84px;gap:10px;align-items:center;font-size:13px}
+.rank{font-size:11px;font-weight:700;padding:3px 0;border-radius:8px;text-align:center;color:#0A0A0A}
+.prrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;border-top:1px solid var(--line);padding-top:8px}
+#sum{max-width:420px;width:calc(100vw - 24px);padding:0;overflow:hidden;background:#050505}
+#sum .sumbody{padding:18px;display:flex;flex-direction:column;gap:12px;background:radial-gradient(120% 70% at 85% 0%,#2A1407 0%,#050505 60%)}
+.sumgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sumgrid div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:3px}
+.sumgrid span{font-size:10px;letter-spacing:1px;color:var(--dim);font-weight:600}
+.sumgrid b{font-family:var(--font);font-weight:700;font-variant-numeric:tabular-nums;font-size:22px}
+.logrow{display:grid;grid-template-columns:50px repeat(7,minmax(0,1fr)) 62px;gap:2px;align-items:center}
+.dot{border:none;background:none;padding:0;display:flex;align-items:center;justify-content:center;height:40px}
 @media (prefers-reduced-motion:no-preference){.ex,.btn,.check{transition:background .15s,border-color .15s}}
 </style>
 </head>
@@ -148,6 +162,7 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="body"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Cơ thể</button>
 </nav>
 <div id="toast" role="status"></div>
+<dialog id="sum" aria-label="Tổng kết buổi tập"><div class="sumbody" id="sumBody"></div><div class="row" style="padding:0 18px 18px;background:#050505"><button class="btn" style="flex:1" id="sumClose">Đóng</button><button class="btn primary" style="flex:1" id="sumShare">Lưu ảnh / chia sẻ</button></div></dialog>
 <dialog id="dlg"><p id="dlgText" style="margin:0 0 16px;line-height:1.5"></p><div class="row" style="justify-content:flex-end"><button class="btn" id="dlgNo">Huỷ</button><button class="btn primary" id="dlgYes">Đồng ý</button></div></dialog>
 
 <script>
@@ -261,7 +276,7 @@ let S = { logs:{}, body:[{ date:'2026-11-14', weight:76.9, bfm:17.5, pbf:22.8, s
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Không lưu được: bộ nhớ trình duyệt bị chặn'); } }
 
-const UI = { tab:'today', date: todayStr(), open:null, range:7, lift:null, drafts:{} };
+const UI = { tab:'today', date: todayStr(), open:null, range:7, lift:null, drafts:{}, map:'vol', planView:'cal' };
 if (UI.date < PLAN_START) UI.date = PLAN_START;
 
 /* ================= LOGIC BUỔI TẬP ================= */
@@ -325,6 +340,158 @@ function upHint(ex, v, s) {
   return { last, up: all };
 }
 
+/* ================= KỶ LỤC, TẠ ĐỀ XUẤT, HẠNG ================= */
+const e1 = x => (+x.kg) * (1 + (+x.rep) / 30);
+const okSet = x => x.done && +x.kg > 0 && +x.rep > 0;
+// 1RM ước tính tốt nhất trước một set (các ngày trước + các set trước trong cùng ngày)
+function bestBefore(id, v, s, setRef) {
+  let best = 0, maxKg = 0;
+  for (const [d, l] of Object.entries(S.logs)) {
+    if (d > s || !l.ex || !l.ex[id] || (l.ex[id].v || 0) !== v) continue;
+    for (const x of l.ex[id].sets) {
+      if (x === setRef) { if (d === s) break; else continue; }
+      if (!okSet(x)) continue;
+      best = Math.max(best, e1(x)); maxKg = Math.max(maxKg, +x.kg);
+    }
+  }
+  return { best, maxKg };
+}
+function lastSession(id, v, s) {
+  const dates = Object.keys(S.logs).filter(d => d < s).sort().reverse();
+  for (const d of dates) {
+    const e = S.logs[d].ex && S.logs[d].ex[id];
+    if (e && (e.v || 0) === v) { const ds = e.sets.filter(okSet); if (ds.length) return { date: d, sets: ds }; }
+  }
+  return null;
+}
+function stepOf(ex) { if (/nấc/.test(ex.inc)) return 2.5; const m = String(ex.inc).match(/([\d.]+)/); return m ? +m[1] : 2.5; }
+function suggestKg(ex, v, s) {
+  if (ex.type === 'core') return null;
+  const last = lastSession(ex.id, v, s); if (!last) return null;
+  const w = weekOf(s), range = repsFor(ex, w);
+  if (w === 4 || w === 8) return { kg: +last.sets[0].kg, reps: range, rir: '3–4', why: 'tuần giảm tải, giữ nguyên tạ buổi ' + short(last.date) };
+  const [lo, hi0] = range.split('–').map(Number), hi = hi0 || lo;
+  const kg0 = Math.max(...last.sets.map(x => +x.kg)), atTop = last.sets.filter(x => +x.kg === kg0);
+  const step = stepOf(ex), rirS = rirFor(ex, w);
+  if (atTop.every(x => +x.rep >= hi)) return { kg: +(kg0 + step).toFixed(2), reps: lo, rir: rirS, why: `buổi ${short(last.date)} đã chạm ${hi} rep ở ${kg0} kg, tăng 1 bậc` };
+  const best = Math.max(...atTop.map(x => +x.rep));
+  return { kg: kg0, reps: Math.min(hi, Math.max(lo, best + 1)), rir: rirS, why: `giữ ${kg0} kg, thêm 1 rep so với buổi ${short(last.date)}` };
+}
+function allPRs() {
+  const out = [];
+  for (const id of Object.keys(ALLEX)) for (const v of [0, 1]) {
+    let best = null, n = 0;
+    for (const [d, l] of Object.entries(S.logs)) {
+      const e = l.ex && l.ex[id]; if (!e || (e.v || 0) !== v) continue;
+      e.sets.filter(okSet).forEach(x => { n++; if (!best || e1(x) > best.val) best = { val: e1(x), kg: +x.kg, rep: +x.rep, date: d }; });
+    }
+    if (best) out.push(Object.assign({ id, v, name: exName(ALLEX[id], v), n }, best));
+  }
+  return out.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : b.val - a.val);
+}
+const RANKS = [['Chưa có', '#6E6E76'], ['Đồng', '#C27F45'], ['Bạc', '#C3CAD4'], ['Vàng', '#F2C14E'], ['Bạch kim', '#6FE0D8'], ['Kim cương', '#8FB8FF']];
+const RK_PAL = [["#4A4E57","#24262C","#0B0C0E"], ["#EBB07E","#B87333","#3E220C"], ["#FFFFFF","#AEB6C2","#3E444D"], ["#FFE9A8","#E8B23A","#5E4006"], ["#D2FFFA","#45C9BF","#0B4743"], ["#E4EEFF","#6F9DF0","#172A63"]];
+// Chuẩn tham khảo (nam, 1RM ước tính / cân nặng) cho 5 mốc Đồng → Kim cương. Tạ đơn tính theo 1 tay.
+const STD = {
+  chest:    { name: 'Ngực',        lifts: [['bench', 1], ['incbb', 1.15], ['incdb', 2.3]],          t: [.5, .75, 1, 1.25, 1.5] },
+  fdelt:    { name: 'Vai trước',   lifts: [['ohp', 1], ['dbsp', 2.2]],                              t: [.35, .5, .65, .8, 1] },
+  sdelt:    { name: 'Vai giữa',    lifts: [['latraise', 1], ['cablelat', 1.3], ['leanlat', 1.3]],    t: [.06, .1, .14, .18, .23] },
+  rdelt:    { name: 'Vai sau',     lifts: [['rdfly', 1], ['revpec', 1]],                            t: [.2, .3, .4, .5, .6] },
+  lats:     { name: 'Lưng xô',     lifts: [['latpd', 1]],                                           t: [.5, .7, .9, 1.1, 1.3] },
+  traps:    { name: 'Lưng giữa',   lifts: [['csrow', 1], ['highrow', 1.1]],                         t: [.5, .75, 1, 1.25, 1.5] },
+  biceps:   { name: 'Tay trước',   lifts: [['bbcurl', 1], ['inccurl', 2.5], ['hammer', 2.2]],       t: [.3, .45, .6, .75, .9] },
+  triceps:  { name: 'Tay sau',     lifts: [['skull', 1], ['ohtri', 1.2], ['ropepd', 1.1], ['tripd', 1.1]], t: [.25, .4, .55, .7, .85] },
+  quad:     { name: 'Đùi trước',   lifts: [['squat', 1]],                                           t: [.75, 1, 1.25, 1.5, 2] },
+  ham:      { name: 'Đùi sau',     lifts: [['legcurl', 1]],                                         t: [.3, .45, .6, .75, .9] },
+  adductor: { name: 'Đùi trong',   lifts: [['adduct', 1]],                                          t: [.4, .6, .8, 1, 1.2] }
+};
+function bodyWeight() { const b = S.body.filter(x => +x.weight > 0).sort((a, c) => a.date < c.date ? 1 : -1)[0]; return b ? +b.weight : 76; }
+function muscleRank(k) {
+  const st = STD[k]; if (!st) return null;
+  const bw = bodyWeight(); let best = 0, src = null;
+  for (const [d, l] of Object.entries(S.logs)) {
+    if (!l.ex) continue;
+    for (const [id, f] of st.lifts) {
+      const e = l.ex[id]; if (!e) continue;
+      const fac = id === 'squat' && e.v === 1 ? 0.55 : f;
+      e.sets.filter(okSet).forEach(x => { const r = e1(x) * fac / bw; if (r > best) { best = r; src = { id, v: e.v || 0, date: d, kg: +x.kg, rep: +x.rep }; } });
+    }
+  }
+  const rank = st.t.filter(t => best >= t).length;
+  return { k, name: st.name, rank, ratio: best, next: st.t[rank], prev: rank ? st.t[rank - 1] : 0, src };
+}
+
+/* ================= TỔNG KẾT BUỔI ================= */
+function tonnage(log) { return log && log.ex ? Object.values(log.ex).reduce((a, e) => a + e.sets.filter(okSet).reduce((b, x) => b + (+x.kg) * (+x.rep), 0), 0) : 0; }
+function effortOf(log) {
+  if (!log) return 0;
+  if (log.ball && log.ball.type !== 'none') return Math.round((+log.ball.min || (log.ball.type === 'run' ? 35 : 90)) * (log.ball.type === 'run' ? 1.2 : 1.6));
+  let pts = 0; Object.values(log.ex || {}).forEach(e => e.sets.filter(x => x.done).forEach(x => { const r = x.rir === '' ? 2.5 : +x.rir; pts += 1 + Math.max(0, 4 - r) * 0.5; }));
+  return Math.round(pts * 3);
+}
+const effortLabel = v => v < 60 ? 'Nhẹ' : v < 110 ? 'Vừa' : v < 160 ? 'Nặng' : 'Rất nặng';
+function summaryOf(s) {
+  const log = S.logs[s] || getLog(s); const sess = SESSIONS[log.session] || SESSIONS.rest;
+  const ats = []; let prs = 0; const lifts = [];
+  Object.entries(log.ex || {}).forEach(([id, e]) => {
+    const ds = e.sets.filter(okSet); ds.forEach(x => { if (x.at) ats.push(x.at); if (x.pr) prs++; });
+    if (ds.length && ALLEX[id]) { const b = ds.reduce((a, x) => e1(x) > e1(a) ? x : a); lifts.push({ name: exName(ALLEX[id], e.v), kg: +b.kg, rep: +b.rep, pr: ds.some(x => x.pr), val: e1(b) }); }
+  });
+  ats.sort();
+  const dur = ats.length > 1 ? Math.round((ats[ats.length - 1] - ats[0]) / 60000) + 2 : null;
+  const eff = effortOf(log);
+  return { s, log, sess, sets: doneSets(log), ton: tonnage(log), prs, dur, eff, label: effortLabel(eff), lifts: lifts.sort((a, b) => b.val - a.val).slice(0, 4) };
+}
+const fmtKg = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + ' tấn' : Math.round(n) + ' kg';
+function openSummary(s) {
+  const m = summaryOf(s), showBack = ['pullA', 'pullB'].includes(m.log.session);
+  const lv = {}; Object.entries(m.log.ex || {}).forEach(([id, e]) => { const n = e.sets.filter(x => x.done).length; if (ALLEX[id]) for (const [k, w] of Object.entries(ALLEX[id].m)) lv[k] = (lv[k] || 0) + n * w; });
+  const L = figLevels(k => !lv[k] ? 0 : lv[k] >= 6 ? 4 : lv[k] >= 4 ? 3 : lv[k] >= 2 ? 2 : 1);
+  UI.sumFig = figure(showBack, showBack ? L.back : L.front, 110, 'Nhóm cơ đã tập');
+  UI.sum = m;
+  $('#sumBody').innerHTML = `<div class="between"><span class="eyebrow">${fmtDate(s)} · ${weekOf(s) >= 0 && weekOf(s) <= 11 ? 'Tuần ' + weekOf(s) : ''}</span><span class="chip acc">${m.label}</span></div>
+    <div style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:8px"><h1>${esc(m.sess.name)}</h1><span class="small" style="color:var(--acc2);font-weight:600">${esc(m.sess.focus)}</span>
+    <div><span class="tiny dim">ĐIỂM NỖ LỰC</span><div class="mono" style="font-size:40px;font-weight:700;line-height:1;color:var(--acc)">${m.eff}</div></div></div>${UI.sumFig}</div>
+    <div class="sumgrid"><div><span>THỜI LƯỢNG</span><b>${m.dur ? m.dur + ' phút' : '–'}</b></div><div><span>KHỐI LƯỢNG</span><b>${fmtKg(m.ton)}</b></div><div><span>SỐ SET</span><b>${m.sets}</b></div><div><span>KỶ LỤC MỚI</span><b style="color:${m.prs ? '#F2C14E' : 'var(--text)'}">${m.prs}</b></div></div>
+    ${m.lifts.length ? `<div style="display:flex;flex-direction:column;gap:6px">${m.lifts.map(l => `<div class="between small"><span>${esc(l.name)}${l.pr ? '<i class="pr">★</i>' : ''}</span><span class="mono">${l.kg} kg × ${l.rep}</span></div>`).join('')}</div>` : ''}`;
+  try { $('#sum').showModal(); } catch (e) {}
+}
+async function shareSummary() {
+  const m = UI.sum; if (!m) return;
+  try { await document.fonts.ready; } catch (e) {}
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
+  const rg = g.createRadialGradient(W * .85, 0, 0, W * .85, 0, W); rg.addColorStop(0, '#3A1A08'); rg.addColorStop(1, 'rgba(5,5,5,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  const F = (w, sz, fam) => `${w} ${sz}px ${fam === 'm' ? "'JetBrains Mono', monospace" : "'Be Vietnam Pro', system-ui, sans-serif"}`;
+  g.fillStyle = '#8B8B93'; g.font = F(600, 30); g.fillText(`${fmtDate(m.s).toUpperCase()}  ·  TẬP TẾT 2027`, 72, 110);
+  g.fillStyle = '#F4F4F5'; g.font = F(800, 120); g.fillText(m.sess.name, 72, 250);
+  g.fillStyle = '#FF8A4A'; g.font = F(600, 34); g.fillText(m.sess.focus.split(/ [+·] /)[0], 72, 310);
+  g.fillStyle = '#8B8B93'; g.font = F(600, 26); g.fillText('ĐIỂM NỖ LỰC', 72, 420);
+  g.fillStyle = '#FF6A26'; g.font = F(700, 150, 'm'); g.fillText(String(m.eff), 64, 560);
+  g.fillStyle = '#F4F4F5'; g.font = F(700, 40); g.fillText(m.label, 72, 620);
+  try {
+    const svg = UI.sumFig.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ').replace(/width="\d+" height="\d+"/, 'width="360" height="792"');
+    const img = new Image(); const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    g.drawImage(img, 660, 40, 360, 792);
+  } catch (e) {}
+  const cells = [['THỜI LƯỢNG', m.dur ? m.dur + ' phút' : '–'], ['KHỐI LƯỢNG', fmtKg(m.ton)], ['SỐ SET', String(m.sets)], ['KỶ LỤC MỚI', String(m.prs)]];
+  cells.forEach(([k, v], i) => {
+    const x = 72 + (i % 2) * 300, y = 700 + Math.floor(i / 2) * 170;
+    g.fillStyle = '#0E0E10'; g.strokeStyle = '#1C1C1F'; g.lineWidth = 2; g.beginPath(); g.roundRect ? g.roundRect(x, y, 280, 150, 24) : g.rect(x, y, 280, 150); g.fill(); g.stroke();
+    g.fillStyle = '#8B8B93'; g.font = F(600, 24); g.fillText(k, x + 26, y + 48);
+    g.fillStyle = i === 3 && m.prs ? '#F2C14E' : '#F4F4F5'; g.font = F(700, 52); g.fillText(v, x + 26, y + 115);
+  });
+  m.lifts.slice(0, 3).forEach((l, i) => {
+    const y = 1100 + i * 58; g.fillStyle = '#D4D4D8'; g.font = F(500, 34); g.fillText((l.pr ? '★ ' : '') + l.name.slice(0, 30), 72, y);
+    g.fillStyle = '#F4F4F5'; g.font = F(700, 34, 'm'); g.textAlign = 'right'; g.fillText(`${l.kg} kg × ${l.rep}`, W - 72, y); g.textAlign = 'left';
+  });
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  const file = new File([blob], `tong-ket-${m.s}.png`, { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  $('#sumBody').insertAdjacentHTML('beforeend', `<img src="${URL.createObjectURL(blob)}" alt="Thẻ tổng kết" style="width:100%;border-radius:14px"><span class="tiny dim">Nhấn giữ ảnh để lưu vào Ảnh.</span>`);
+}
+
 /* ================= VOLUME ================= */
 function volume(from, to) {
   const vol = {}; Object.keys(MUSCLES).forEach(k => vol[k] = 0);
@@ -385,10 +552,11 @@ const BACK = [
 const FIB_F = ["M96 92 Q80 100 64 106","M96 104 Q80 110 64 114","M96 116 Q82 122 68 122","M64 344 Q66 300 64 252","M74 344 Q78 300 76 248"];
 const FIB_B = ["M70 112 Q78 150 94 190","M78 108 Q86 140 98 170","M92 70 Q80 82 68 86"];
 let figN = 0;
-function figure(back, lv, w, label) {
+function figure(back, lv, w, label, pal) {
+  pal = pal || LV;
   const p = 'fg' + (figN++); const h = Math.round(w * 2.2);
   let defs = '<defs>';
-  LV.forEach((c, i) => defs += `<radialGradient id="${p}g${i}" cx="38%" cy="30%" r="80%" fx="34%" fy="24%"><stop offset="0" stop-color="${c[0]}"/><stop offset=".45" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></radialGradient>`);
+  pal.forEach((c, i) => defs += `<radialGradient id="${p}g${i}" cx="38%" cy="30%" r="80%" fx="34%" fy="24%"><stop offset="0" stop-color="${c[0]}"/><stop offset=".45" stop-color="${c[1]}"/><stop offset="1" stop-color="${c[2]}"/></radialGradient>`);
   defs += `<linearGradient id="${p}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A2C32"/><stop offset=".6" stop-color="#151619"/><stop offset="1" stop-color="#08090A"/></linearGradient>`
        + `<radialGradient id="${p}h" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#3A3D44"/><stop offset="1" stop-color="#0E0F12"/></radialGradient>`
        + `<filter id="${p}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#000" flood-opacity=".85"/></filter>`
@@ -466,6 +634,7 @@ function viewToday() {
     exList(s, key).forEach((ex, i) => html += exCard(ex, i, log, s, w));
     const n = doneSets(log), total = Object.values(log.ex).reduce((a, e) => a + e.sets.length, 0);
     html += `<button class="btn primary" style="height:52px" data-act="finish">${log.done ? 'Đã hoàn thành buổi · ' : 'Hoàn thành buổi · '}${n}/${total} set</button>`;
+    if (log.done || n) html += `<button class="btn" data-act="summary">Xem thẻ tổng kết</button>`;
   }
   html += `<label class="small dim" for="swap">Đổi buổi cho ngày này</label><select class="field" id="swap" data-act="swap">${Object.entries(SESSIONS).map(([k, v]) => `<option value="${k}" ${k === key ? 'selected' : ''}>${esc(v.name)}${k === plannedSession(s) ? ' (theo lịch)' : ''}</option>`).join('')}</select>`;
   return html;
@@ -484,10 +653,12 @@ function exCard(ex, i, log, s, w) {
     const hint = upHint(ex, e.v, s);
     h += `<div class="exbody">`;
     if (hint) h += `<div class="hint${hint.up ? ' up' : ''}">Lần trước (${short(hint.last.date)}): ${hint.last.sets.map(x => `${x.kg}×${x.rep}`).join(', ')}${hint.up ? `. Đã chạm ${reps.split('–').pop()} rep mọi set: tăng ${ex.inc}.` : '.'}</div>`;
+    const sg = suggestKg(ex, e.v, s);
+    if (sg && e.sets.some(x => !x.done)) h += `<div class="sugg"><div><b class="mono">${sg.kg} kg × ${sg.reps}</b><span class="tiny dim">Tạ đề xuất · RIR ${sg.rir} · ${esc(sg.why)}</span></div><button class="btn" style="height:38px;padding:0 14px;font-size:13px" data-act="usesugg" data-id="${ex.id}" data-kg="${sg.kg}">Dùng</button></div>`;
     h += `<div class="setgrid sethead"><span>SET</span><span>KG</span><span>REP</span><span>RIR</span><span></span></div>`;
     e.sets.forEach((x, j) => {
       const dc = x.done ? ' done' : '';
-      h += `<div class="setgrid"><span class="setn${x.done ? ' on' : ''}">${j + 1}</span>
+      h += `<div class="setgrid"><span class="setn${x.done ? ' on' : ''}">${j + 1}${x.pr ? '<i class="pr" title="Kỷ lục mới">★</i>' : ''}</span>
         <input class="cell mono${dc}" type="number" inputmode="decimal" step="0.5" aria-label="Kg set ${j + 1}" placeholder="kg" value="${esc(x.kg)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="kg">
         <input class="cell mono${dc}" type="number" inputmode="numeric" aria-label="Rep set ${j + 1}" placeholder="${esc(reps)}" value="${esc(x.rep)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="rep">
         <input class="cell mono${dc}" type="number" inputmode="numeric" aria-label="RIR set ${j + 1}" placeholder="${esc(rir)}" value="${esc(x.rir)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="rir">
@@ -500,9 +671,44 @@ function exCard(ex, i, log, s, w) {
   return h + `</article>`;
 }
 
+const SESS_COLOR = { pushA: '#FF6A26', pushB: '#FF9A5C', pullA: '#E8B23A', pullB: '#F2D27A', core: '#6F9DF0', ball: '#4ADE80', rest: '#55555C' };
+function viewLog() {
+  const t = todayStr(), mon = d => addDays(d, -dow(d));
+  const dates = Object.keys(S.logs).filter(isTrained).sort();
+  const start = mon(dates[0] && dates[0] < '2026-11-16' ? dates[0] : '2026-11-16');
+  const end = mon(t < PLAN_END ? t : PLAN_END);
+  const weeks = []; for (let m = end; m >= start; m = addDays(m, -7)) weeks.push(m);
+  let maxT = 1; dates.forEach(d => { maxT = Math.max(maxT, tonnage(S.logs[d])); });
+  const thisW = weeks[0], lastW = addDays(thisW, -7);
+  const wk = m => { let ton = 0, sets = 0, eff = 0, n = 0; for (let i = 0; i < 7; i++) { const l = S.logs[addDays(m, i)]; if (l && isTrained(addDays(m, i))) { ton += tonnage(l); sets += doneSets(l); eff += effortOf(l); n++; } } return { ton, sets, eff, n }; };
+  const a = wk(thisW), b = wk(lastW);
+  const delta = (x, y) => y ? `<span class="tiny" style="color:${x >= y ? 'var(--good)' : 'var(--dim)'}">${x >= y ? '▲' : '▼'} ${Math.abs(Math.round((x / y - 1) * 100))}%</span>` : '';
+  let h = `<section class="card"><div class="between"><b>Tuần này</b><span class="tiny dim">so với tuần trước</span></div>
+    <div class="sumgrid"><div><span>BUỔI</span><b>${a.n}</b></div><div><span>KHỐI LƯỢNG</span><b>${fmtKg(a.ton)}</b>${delta(a.ton, b.ton)}</div><div><span>SỐ SET</span><b>${a.sets}</b>${delta(a.sets, b.sets)}</div><div><span>NỖ LỰC</span><b>${a.eff}</b>${delta(a.eff, b.eff)}</div></div></section>`;
+  h += `<section class="card"><div class="logrow tiny dim"><span></span>${DOW.map(x => `<span style="text-align:center">${x}</span>`).join('')}<span style="text-align:right">tổng</span></div>`;
+  weeks.forEach(m => {
+    const w = weekOf(addDays(m, 6) > PLAN_START ? (m < PLAN_START ? PLAN_START : m) : m), s7 = wk(m);
+    h += `<div class="logrow" style="border-top:1px solid var(--line)"><span class="tiny" style="display:flex;flex-direction:column"><b>${w >= 0 && w <= 11 ? 'T' + w : '–'}</b><span class="dim">${short(m)}</span></span>`;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(m, i), l = S.logs[d];
+      let dot = `<circle cx="20" cy="20" r="2.5" fill="#2A2A2E"/>`;
+      if (l && isTrained(d)) {
+        const k = l.session || 'pushA', ton = tonnage(l);
+        const r = l.ball ? 5 + 9 * Math.min(1, (+l.ball.min || 60) / 120) : 5 + 13 * Math.sqrt(ton / maxT);
+        dot = `<circle cx="20" cy="20" r="${r.toFixed(1)}" fill="${SESS_COLOR[l.ball ? 'ball' : k] || '#FF6A26'}" fill-opacity=".9"/>`;
+      }
+      h += `<button class="dot" data-act="open" data-d="${d}" aria-label="${fmtDate(d)}"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">${d === t ? '<circle cx="20" cy="20" r="19" fill="none" stroke="#F4F4F5" stroke-width="1.5"/>' : ''}${dot}</svg></button>`;
+    }
+    h += `<span class="tiny" style="text-align:right;line-height:1.4;font-variant-numeric:tabular-nums">${s7.ton ? fmtKg(s7.ton) : '–'}<br><span class="dim">${s7.sets} set</span></span></div>`;
+  });
+  h += `<div class="row tiny dim" style="flex-wrap:wrap;gap:6px 12px">${[['pushA','Push A'],['pushB','Push B'],['pullA','Pull A'],['pullB','Pull B'],['core','Vai – core'],['ball','Bóng / chạy']].map(([k, n]) => `<span class="row" style="gap:4px"><i style="width:10px;height:10px;border-radius:50%;background:${SESS_COLOR[k]}"></i>${n}</span>`).join('')}</div><span class="tiny dim">Chấm càng to, khối lượng nâng (kg × rep) càng lớn.</span></section>`;
+  return h;
+}
 function viewPlan() {
   const t = todayStr();
-  let h = `<h1>Lịch 11 tuần</h1><span class="small muted">20/11/2026 → 5/2/2027 · chạm một ngày để mở buổi tập. Gạch xanh dưới ô là ngày đo InBody.</span>`;
+  let h = `<h1>Lịch 11 tuần</h1><div class="seg"><button aria-pressed="${UI.planView === 'cal'}" data-act="planView" data-v="cal">Lịch</button><button aria-pressed="${UI.planView === 'log'}" data-act="planView" data-v="log">Nhật ký</button></div>`;
+  if (UI.planView === 'log') return h + viewLog();
+  h += `<span class="small muted">20/11/2026 → 5/2/2027 · chạm một ngày để mở buổi tập. Gạch xanh dưới ô là ngày đo InBody.</span>`;
   for (let w = 0; w <= 11; w++) {
     const start = w === 0 ? addDays(PLAN_START, -4) : addDays(W1, (w - 1) * 7);
     const tag = w === 4 || w === 8 ? 'Giảm tải' : w === 0 ? 'Khởi động' : w === 11 ? 'Về đích' : PHASE[phaseOf(w)];
@@ -561,7 +767,11 @@ function viewStats() {
   const days = UI.range === 0 ? Math.max(7, diffDays(trainedDates[0] || t, t) + 1) : UI.range;
   const from = addDays(t, -(days - 1));
   const vol = volume(from, t), plan = planVolume(from < PLAN_START ? PLAN_START : from, t);
-  const L = figLevels(k => levelOf(vol[k], days));
+  const ranks = Object.keys(STD).map(muscleRank);
+  const RL = {}; ranks.forEach(r => RL[r.k] = r.rank);
+  const isRank = UI.map === 'rank';
+  const L = isRank ? figLevels(k => RL[k] || 0) : figLevels(k => levelOf(vol[k], days));
+  const prs = allPRs(); const prCount = Object.values(S.logs).reduce((a, l) => a + Object.values(l.ex || {}).reduce((b, e) => b + e.sets.filter(x => x.pr).length, 0), 0);
 
   let h = `<h1>Thống kê</h1>
   <div class="tiles">
@@ -570,12 +780,24 @@ function viewStats() {
     <div class="tile"><span>CHUỖI</span><b>${streak}</b></div>
     <div class="tile"><span>CÂN 30N</span><b style="color:${dW < 0 ? 'var(--good)' : dW > 0 ? 'var(--acc2)' : 'var(--text)'}">${dW > 0 ? '+' : dW < 0 ? '−' : ''}${Math.abs(dW).toFixed(1)}</b></div>
   </div>
-  <section class="bodymap"><div class="between"><b style="font-size:13px;letter-spacing:1px">VOLUME THEO NHÓM CƠ</b>
-    <div class="legend">ít ${LV.map(c => `<i style="background:linear-gradient(90deg,${c[2]},${c[1]})"></i>`).join('')} nhiều</div></div>
-    <div class="seg">${[[7,'7 ngày'],[30,'30 ngày'],[90,'90 ngày'],[0,'Tất cả']].map(([v, n]) => `<button aria-pressed="${UI.range === v}" data-act="range" data-v="${v}">${n}</button>`).join('')}</div>
-    <div class="figs"><figure>${figure(false, L.front, 150, 'Mặt trước')}<figcaption>Trước</figcaption></figure><figure>${figure(true, L.back, 150, 'Mặt sau')}<figcaption>Sau</figcaption></figure></div>
-    <span class="tiny dim">Màu theo số hiệp mỗi tuần: dưới 4 · 4–7 · 8–11 · từ 12. Bài phụ tính nửa hiệp cho nhóm cơ hỗ trợ.</span>
+  <section class="bodymap">
+    <div class="seg"><button aria-pressed="${!isRank}" data-act="map" data-v="vol">Volume</button><button aria-pressed="${isRank}" data-act="map" data-v="rank">Hạng sức mạnh</button></div>
+    ${isRank ? `<div class="legend" style="flex-wrap:wrap;gap:4px 8px">${RANKS.slice(1).map((r, i) => `<span class="row" style="gap:4px"><i style="width:12px;height:8px;background:linear-gradient(90deg,${RK_PAL[i + 1][2]},${RK_PAL[i + 1][1]})"></i>${r[0]}</span>`).join('')}</div>`
+    : `<div class="between"><b style="font-size:13px;letter-spacing:1px">VOLUME THEO NHÓM CƠ</b><div class="legend">ít ${LV.map(c => `<i style="background:linear-gradient(90deg,${c[2]},${c[1]})"></i>`).join('')} nhiều</div></div>
+    <div class="seg">${[[7,'7 ngày'],[30,'30 ngày'],[90,'90 ngày'],[0,'Tất cả']].map(([v, n]) => `<button aria-pressed="${UI.range === v}" data-act="range" data-v="${v}">${n}</button>`).join('')}</div>`}
+    <div class="figs"><figure>${figure(false, L.front, 150, 'Mặt trước', isRank ? RK_PAL : LV)}<figcaption>Trước</figcaption></figure><figure>${figure(true, L.back, 150, 'Mặt sau', isRank ? RK_PAL : LV)}<figcaption>Sau</figcaption></figure></div>
+    <span class="tiny dim">${isRank ? `Hạng tính từ 1RM ước tính tốt nhất chia cho cân nặng (${bodyWeight()} kg), theo chuẩn tham khảo cho nam. Vai giữa gộp vào vai trước và vai sau trên hình.` : 'Màu theo số hiệp mỗi tuần: dưới 4 · 4–7 · 8–11 · từ 12. Bài phụ tính nửa hiệp cho nhóm cơ hỗ trợ.'}</span>
   </section>`;
+  if (isRank) {
+    h += `<section class="card"><div class="between"><b>Hạng từng nhóm cơ</b><span class="tiny dim">× cân nặng</span></div><div class="bars">`;
+    ranks.slice().sort((a, b) => b.rank - a.rank || b.ratio - a.ratio).forEach(r => {
+      const pct = r.next ? Math.max(0, Math.min(100, (r.ratio - r.prev) / (r.next - r.prev) * 100)) : 100;
+      const col = RANKS[r.rank][1];
+      h += `<div class="rankrow"><span>${r.name}</span><div style="display:flex;flex-direction:column;gap:3px"><div class="track"><div style="width:${pct}%;background:${col}"></div></div><span class="tiny dim">${r.src ? `${esc(exName(ALLEX[r.src.id], r.src.v))} ${r.src.kg}×${r.src.rep} · ${r.ratio.toFixed(2)}×` : 'chưa có set'}${r.next ? ` · hạng sau ở ${r.next}×` : ''}</span></div><span class="rank" style="background:${col}">${RANKS[r.rank][0]}</span></div>`;
+    });
+    const weak = ranks.filter(r => r.src).sort((a, b) => a.rank - b.rank || a.ratio / (a.next || 1) - b.ratio / (b.next || 1))[0];
+    h += `</div>${weak ? `<span class="small" style="color:var(--acc2)">Nhóm yếu nhất lúc này: ${weak.name}. Ưu tiên đẩy tạ bài ${esc(exName(ALLEX[weak.src.id], weak.src.v))}.</span>` : ''}</section>`;
+  }
 
   const rows = Object.keys(MUSCLES).map(k => ({ k, v: vol[k], p: plan[k] })).filter(r => r.v > 0 || r.p > 0).sort((a, b) => b.v - a.v || b.p - a.p);
   h += `<section class="card"><div class="between"><b>Hiệp đã tập / kế hoạch</b><span class="tiny dim">${UI.range ? UI.range + ' ngày' : 'tất cả'}</span></div><div class="bars">`;
@@ -598,6 +820,14 @@ function viewStats() {
     }
   }
   h += `</div></section>`;
+
+  // Kỷ lục cá nhân
+  const t7 = addDays(t, -6);
+  h += `<section class="card"><div class="between"><b>Kỷ lục cá nhân</b><span class="chip" style="background:#2A2207;color:#F2C14E">★ ${prCount} lần phá kỷ lục</span></div>`;
+  if (!prs.length) h += `<span class="small dim">Chưa có dữ liệu. Mỗi khi 1RM ước tính của một bài vượt mức cũ, set đó được gắn ★.</span>`;
+  prs.slice(0, UI.allPR ? 99 : 6).forEach(r => h += `<div class="prrow"><span class="small">${esc(r.name)}${r.date >= t7 ? ' <span class="chip acc" style="padding:2px 6px">Mới</span>' : ''}</span><span class="mono small">${r.kg} kg × ${r.rep}</span><span class="tiny dim">${short(r.date)} · ${r.n} set đã ghi</span><span class="mono tiny" style="color:#F2C14E;text-align:right">1RM ≈ ${r.val.toFixed(1)}</span></div>`);
+  if (prs.length > 6) h += `<button class="linkbtn" data-act="allPR">${UI.allPR ? 'Thu gọn' : 'Xem tất cả ' + prs.length + ' bài'}</button>`;
+  h += `</section>`;
 
   // Sức mạnh: e1RM theo bài
   const lifts = ['bench','ohp','csrow','pullup','latpd','dbsp','incbb','squat'];
@@ -680,12 +910,14 @@ document.addEventListener('click', async ev => {
   else if (act === 'toggle') { UI.open = UI.open === b.dataset.id ? null : b.dataset.id; }
   else if (act === 'done') {
     const log = getLog(s), e = log.ex[b.dataset.id], x = e.sets[+b.dataset.j], ex = ALLEX[b.dataset.id];
-    x.done = !x.done;
+    x.done = !x.done; x.pr = false;
     if (x.done) {
       const w = weekOf(s);
       if (x.rep === '') x.rep = String(parseInt(repsFor(ex, w), 10));
       if (x.kg === '' && +b.dataset.j > 0) x.kg = e.sets[+b.dataset.j - 1].kg;
-      if (+b.dataset.j + 1 < e.sets.length && e.sets[+b.dataset.j + 1].kg === '') e.sets[+b.dataset.j + 1].kg = x.kg;
+      x.at = Date.now();
+      if (okSet(x)) { const prev = bestBefore(ex.id, e.v || 0, s, x); if (prev.best > 0 && e1(x) > prev.best + 0.05) { x.pr = true; setTimeout(() => toast(`★ Kỷ lục mới: ${exName(ex, e.v)} · 1RM ≈ ${e1(x).toFixed(1)} kg`), 50); } }
+      e.sets.slice(+b.dataset.j + 1).forEach(y => { if (!y.done) y.kg = x.kg; });
       const allDone = e.sets.every(y => y.done);
       if (allDone) { const list = exList(s, log.session); const i = list.findIndex(q => q.id === ex.id); const nxt = list.slice(i + 1).find(q => !(log.ex[q.id] && log.ex[q.id].sets.every(y => y.done))); UI.open = nxt ? nxt.id : null; startTimer(restSec(ex), nxt ? 'Nghỉ trước ' + nxt.name : 'Xong bài cuối'); }
       else startTimer(restSec(ex), `Nghỉ trước set ${+b.dataset.j + 2}`);
@@ -698,7 +930,12 @@ document.addEventListener('click', async ev => {
     const e = getLog(s).ex[b.dataset.id]; e.v = e.v ? 0 : 1;
     const last = lastSets(b.dataset.id, e.v, s); e.sets.forEach(x => { if (!x.done) x.kg = last ? last.sets[0].kg : ''; }); commit(s);
   }
-  else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) toast(`Xong ${SESSIONS[log.session].name}: ${doneSets(log)} set. Nhớ ăn đủ protein.`); }
+  else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) { render(); openSummary(s); return; } }
+  else if (act === 'summary') { openSummary(s); return; }
+  else if (act === 'usesugg') { const e = getLog(s).ex[b.dataset.id]; e.sets.forEach(x => { if (!x.done) x.kg = b.dataset.kg; }); commit(s); toast('Đã điền ' + b.dataset.kg + ' kg cho các set còn lại'); }
+  else if (act === 'map') { UI.map = b.dataset.v; }
+  else if (act === 'planView') { UI.planView = b.dataset.v; }
+  else if (act === 'allPR') { UI.allPR = !UI.allPR; }
   else if (act === 'ball') { const prev = (S.logs[s] && S.logs[s].ball) || {}; S.logs[s] = Object.assign(S.logs[s] || { session: 'ball', ex: {} }, { ball: { type: b.dataset.k, min: prev.min || '' }, done: b.dataset.k !== 'none' }); if (b.dataset.k === 'none') delete S.logs[s].ball; save(); }
   else if (act === 'range') { UI.range = +b.dataset.v; }
   else if (act === 'timerAdd') { timer.end += 15000; timer.total += 15; timer.beeped = false; tick(); return; }
@@ -744,6 +981,8 @@ document.addEventListener('submit', ev => {
   S.body = S.body.filter(b => b.date !== entry.date).concat(entry); save(); toast('Đã lưu số đo ' + short(entry.date)); render();
 });
 
+$('#sumClose').onclick = () => $('#sum').close();
+$('#sumShare').onclick = () => shareSummary();
 render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
