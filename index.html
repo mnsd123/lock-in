@@ -121,8 +121,8 @@ nav button[aria-current="page"]{color:var(--acc);font-weight:700}
 #timer.show{display:flex}
 #timer .t{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--acc2);min-width:70px}
 #timer.over .t{color:var(--good)}
-#toast{position:fixed;left:50%;top:calc(var(--top) + 12px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;z-index:9;display:none;max-width:90vw}
-#toast.show{display:block}
+#toast{display:none;align-items:center;width:max-content;position:fixed;left:50%;top:calc(var(--top) + 12px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600;z-index:9;display:none;max-width:90vw}
+#toast.show{display:flex}
 dialog{background:var(--card);color:var(--text);border:1px solid var(--line2);border-radius:20px;padding:18px;max-width:340px}
 dialog::backdrop{background:rgba(0,0,0,.7)}
 .pr{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#F2C14E;color:#1A1200;font-size:9px;font-weight:800;margin-left:3px;vertical-align:2px;font-style:normal}
@@ -695,6 +695,7 @@ function viewToday() {
     const n = doneSets(log), total = Object.values(log.ex).reduce((a, e) => a + e.sets.length, 0);
     html += `<button class="btn primary" style="height:52px" data-act="finish">${log.done ? 'Đã hoàn thành buổi · ' : 'Hoàn thành buổi · '}${n}/${total} set</button>`;
     if (log.done || n) html += `<button class="btn" data-act="summary">Xem thẻ tổng kết</button>`;
+    if (S.logs[s]) html += `<button class="btn ghost" style="color:var(--bad);border-color:#3A1E1E" data-act="cancelsess">${S.logs[s].extra ? 'Huỷ buổi tập thêm này' : 'Huỷ buổi tập · xoá các set đã ghi'}</button>`;
   }
   html += `<label class="small dim" for="swap">Đổi buổi cho ngày này</label><select class="field" id="swap" data-act="swap">${Object.entries(SESSIONS).map(([k, v]) => `<option value="${k}" ${k === key ? 'selected' : ''}>${esc(v.name)}${k === plannedSession(s) ? ' (theo lịch)' : ''}</option>`).join('')}</select>`;
   return html;
@@ -958,7 +959,11 @@ function tick() {
 setInterval(tick, 250);
 
 let toastT;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function toast(msg, actLabel, fn) {
+  const t = $('#toast'); t.textContent = msg;
+  if (actLabel) { const b = document.createElement('button'); b.textContent = actLabel; b.style.cssText = 'white-space:nowrap;margin-left:12px;border:none;background:#FF6A26;color:#140600;font-weight:700;border-radius:8px;padding:6px 10px;font-size:13px'; b.onclick = () => { t.classList.remove('show'); fn(); }; t.appendChild(b); }
+  t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), actLabel ? 6000 : 2600);
+}
 function ask(msg) { return new Promise(res => { const d = $('#dlg'); $('#dlgText').textContent = msg; const done = v => { d.close(); res(v); }; $('#dlgYes').onclick = () => done(true); $('#dlgNo').onclick = () => done(false); try { d.showModal(); } catch (e) { res(true); } }); }
 
 document.addEventListener('click', async ev => {
@@ -993,6 +998,14 @@ document.addEventListener('click', async ev => {
   }
   else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) { render(); openSummary(s); return; } }
   else if (act === 'summary') { openSummary(s); return; }
+  else if (act === 'cancelsess') {
+    const log = S.logs[s], n = doneSets(log);
+    if (n && !(await ask(`Huỷ buổi ${SESSIONS[log.session].name} ngày ${short(s)}? ${n} set đã ghi sẽ bị xoá.`))) return;
+    const backup = JSON.parse(JSON.stringify(log));
+    delete S.logs[s]; delete UI.drafts[s]; UI.open = null; $('#timer').classList.remove('show'); save(); render();
+    toast('Đã huỷ buổi tập', 'Hoàn tác', () => { S.logs[s] = backup; save(); render(); toast('Đã khôi phục buổi tập'); });
+    return;
+  }
   else if (act === 'addsess') { delete UI.drafts[s]; S.logs[s] = b.dataset.k === 'free' ? { session: 'free', ex: {}, done: false, extra: true } : Object.assign(buildLog(s, b.dataset.k), { extra: true }); save(); UI.open = null; toast('Đã thêm ' + SESSIONS[b.dataset.k].name + ' vào ' + short(s)); }
   else if (act === 'swapex') {
     const id = b.dataset.id, log = getLog(s);
