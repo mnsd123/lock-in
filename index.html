@@ -236,6 +236,19 @@ const SESSIONS = {
   rest: { name:'Nghỉ', tag:'Hồi phục', focus:'Nghỉ hoàn toàn: ngủ đủ, ăn đủ protein, đi bộ nhẹ nếu muốn', ex:[] }
 };
 const ALLEX = {}; Object.values(SESSIONS).forEach(s => s.ex.forEach(e => ALLEX[e.id] = e));
+// Buổi phụ: dùng vào ngày rảnh. Nhẹ, nhiều rep, không tập chân, ưu tiên vai giữa, tay, ngực trên và core.
+ALLEX.saPd = { id:'saPd', name:'Straight-arm pulldown (cáp)', type:'iso', sets:[3,3,3], reps:['12–15','12–15','12–15'], rest:'1:00', inc:'+1 nấc', m:{lats:1}, tip:'Tay gần thẳng, kéo cáp từ trên xuống đùi bằng lưng xô, không gập khuỷu.' };
+ALLEX.cableCurl = { id:'cableCurl', name:'Cable curl', type:'iso', sets:[3,3,3], reps:['12–15','12–15','12–15'], rest:'1:00', inc:'+1 nấc', m:{biceps:1}, tip:'Khuỷu cố định sát thân, siết 1 giây ở đỉnh, hạ chậm.' };
+const BX = (id, sets, reps) => Object.assign({}, ALLEX[id], { sets, reps, rest: '1:00', bonus: true });
+SESSIONS.bonus = { name:'Buổi phụ', tag:'Pump · nhẹ', focus:'Vai giữa, tay, ngực trên, lưng, core · không tập chân', dur:'45–55 phút', ex:[
+  BX('cablelat', [3,3,3], ['15–20','15–20','15–20']),
+  BX('cablefly', [3,3,3], ['12–15','12–15','12–15']),
+  BX('saPd', [3,3,3], ['12–15','12–15','12–15']),
+  BX('revpec', [3,3,3], ['15–20','15–20','15–20']),
+  BX('cableCurl', [3,3,3], ['12–15','12–15','12–15']),
+  BX('ropepd', [3,3,3], ['12–15','12–15','12–15']),
+  BX('crunch', [2,3,3], ['12–15','12–15','12–15'])
+]};
 
 const WEEK_RIR = ['3','2–3','2–3','2','3–4','2','1–2','1–2','3–4','1–2','1','1'];
 const WEEK_NOTE = [
@@ -357,7 +370,7 @@ function defaultVariant(ex, w) {
 const exName = (ex, v) => v ? ex.alt : ex.name;
 const repsFor = (ex, w) => ex.reps[phaseOf(Math.max(0, Math.min(11, w)))];
 const restSec = ex => { const m = ex.rest.match(/(\d+):(\d+)/); return m ? (+m[1]) * 60 + (+m[2]) : 90; };
-const rirFor = (ex, w) => ex.type === 'main' ? WEEK_RIR[Math.max(0, Math.min(11, w))] : ex.type === 'leg' || ex.type === 'core' ? '2–3' : (w === 4 || w === 8 ? '3' : '1–2');
+const rirFor = (ex, w) => ex.bonus ? '2–3' : ex.type === 'main' ? WEEK_RIR[Math.max(0, Math.min(11, w))] : ex.type === 'leg' || ex.type === 'core' ? '2–3' : (w === 4 || w === 8 ? '3' : '1–2');
 
 function lastSets(id, v, before) {
   const dates = Object.keys(S.logs).filter(d => d < before).sort().reverse();
@@ -683,8 +696,9 @@ function viewToday() {
   } else if (key === 'rest') {
     html += `<div class="card"><span class="muted" style="line-height:1.6">${plannedSession(s) === 'rest' ? 'Hôm nay nghỉ theo lịch. Ngủ 7–8 tiếng, protein khoảng 150–160 g, creatine 5 g như thường lệ.' : 'Ngày này không có lịch tập.'}</span></div>
     <section class="card"><b>Thêm buổi tập</b><span class="small muted">Rảnh và muốn tập thêm? Chọn một buổi có sẵn hoặc tự chọn bài.</span>
-      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${['pushA','pushB','pullA','pullB','core'].map(k => `<button class="btn" data-act="addsess" data-k="${k}">${SESSIONS[k].name}</button>`).join('')}<button class="btn primary" data-act="addsess" data-k="free">Buổi tự do</button></div>
-      <span class="tiny dim">Buổi thêm được tính vào thống kê và kỷ lục, không làm lệch lịch các tuần sau.</span></section>`;
+      <button class="btn primary" style="height:auto;min-height:56px;padding:10px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left" data-act="addsess" data-k="bonus"><span>Buổi phụ · ${SESSIONS.bonus.dur}</span><span style="font-size:12px;font-weight:500">7 bài nhẹ cho vai giữa, tay, ngực trên, lưng, core · không chân</span></button>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${['pushA','pushB','pullA','pullB','core'].map(k => `<button class="btn" data-act="addsess" data-k="${k}">${SESSIONS[k].name}</button>`).join('')}<button class="btn" data-act="addsess" data-k="free">Buổi tự do</button></div>
+      <span class="tiny dim">Buổi phụ giữ RIR 2–3 để không ảnh hưởng buổi chính. Tối đa 1 buổi phụ mỗi tuần, tránh làm ngay trước Push A hoặc Pull A. Buổi thêm được tính vào thống kê và kỷ lục, không làm lệch lịch các tuần sau.</span></section>`;
   } else {
     const log = getLog(s);
     const planned = plannedList(s, key).map(e => e.id);
@@ -733,7 +747,7 @@ function exCard(ex, i, log, s, w, extra) {
   return h + `</article>`;
 }
 
-const SESS_COLOR = { pushA: '#FF6A26', pushB: '#FF9A5C', pullA: '#E8B23A', pullB: '#F2D27A', core: '#6F9DF0', ball: '#4ADE80', free: '#A78BFA', rest: '#55555C' };
+const SESS_COLOR = { pushA: '#FF6A26', pushB: '#FF9A5C', pullA: '#E8B23A', pullB: '#F2D27A', core: '#6F9DF0', ball: '#4ADE80', free: '#A78BFA', bonus: '#F472B6', rest: '#55555C' };
 function viewLog() {
   const t = todayStr(), mon = d => addDays(d, -dow(d));
   const dates = Object.keys(S.logs).filter(isTrained).sort();
@@ -763,7 +777,7 @@ function viewLog() {
     }
     h += `<span class="tiny" style="text-align:right;line-height:1.4;font-variant-numeric:tabular-nums">${s7.ton ? fmtKg(s7.ton) : '–'}<br><span class="dim">${s7.sets} set</span></span></div>`;
   });
-  h += `<div class="row tiny dim" style="flex-wrap:wrap;gap:6px 12px">${[['pushA','Push A'],['pushB','Push B'],['pullA','Pull A'],['pullB','Pull B'],['core','Vai – core'],['free','Tự do'],['ball','Bóng / chạy']].map(([k, n]) => `<span class="row" style="gap:4px"><i style="width:10px;height:10px;border-radius:50%;background:${SESS_COLOR[k]}"></i>${n}</span>`).join('')}</div><span class="tiny dim">Chấm càng to, khối lượng nâng (kg × rep) càng lớn.</span></section>`;
+  h += `<div class="row tiny dim" style="flex-wrap:wrap;gap:6px 12px">${[['pushA','Push A'],['pushB','Push B'],['pullA','Pull A'],['pullB','Pull B'],['core','Vai – core'],['bonus','Buổi phụ'],['free','Tự do'],['ball','Bóng / chạy']].map(([k, n]) => `<span class="row" style="gap:4px"><i style="width:10px;height:10px;border-radius:50%;background:${SESS_COLOR[k]}"></i>${n}</span>`).join('')}</div><span class="tiny dim">Chấm càng to, khối lượng nâng (kg × rep) càng lớn.</span></section>`;
   return h;
 }
 function viewPlan() {
