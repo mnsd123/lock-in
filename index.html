@@ -162,6 +162,17 @@ dialog::backdrop{background:rgba(0,0,0,.7)}
   <button data-tab="body"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Cơ thể</button>
 </nav>
 <div id="toast" role="status"></div>
+<dialog id="swapDlg" aria-label="Thay bài tập"><form method="dialog" id="swapForm" style="display:flex;flex-direction:column;gap:10px;min-width:280px">
+  <b id="swapTitle">Thay bài</b>
+  <label class="small dim" for="swapSel">Thay bằng</label><select class="field" id="swapSel"></select>
+  <div id="swapNew" style="display:none;flex-direction:column;gap:8px">
+    <label class="small dim" for="swapName">Tên bài mới</label><input class="field" id="swapName" maxlength="60" placeholder="Ví dụ: Cable row một tay">
+    <label class="small dim" for="swapMus">Nhóm cơ chính</label><select class="field" id="swapMus"></select>
+    <span class="tiny dim">Số set, rep và thời gian nghỉ lấy theo bài đang thay.</span>
+  </div>
+  <label class="row small" style="gap:10px;min-height:44px"><input type="checkbox" id="swapPerm" style="width:22px;height:22px;accent-color:#FF6A26">Áp dụng cho tất cả buổi sau (sửa plan)</label>
+  <div class="row" style="justify-content:flex-end"><button class="btn" value="cancel" type="button" id="swapCancel">Huỷ</button><button class="btn primary" type="button" id="swapOk">Thay bài</button></div>
+</form></dialog>
 <dialog id="sum" aria-label="Tổng kết buổi tập"><div class="sumbody" id="sumBody"></div><div class="row" style="padding:0 18px 18px;background:#050505"><button class="btn" style="flex:1" id="sumClose">Đóng</button><button class="btn primary" style="flex:1" id="sumShare">Lưu ảnh / chia sẻ</button></div></dialog>
 <dialog id="dlg"><p id="dlgText" style="margin:0 0 16px;line-height:1.5"></p><div class="row" style="justify-content:flex-end"><button class="btn" id="dlgNo">Huỷ</button><button class="btn primary" id="dlgYes">Đồng ý</button></div></dialog>
 
@@ -275,6 +286,8 @@ function plannedSession(s) {
 const KEY = 'tt27-data';
 let S = { logs:{}, body:[{ date:'2026-11-14', weight:76.9, bfm:17.5, pbf:22.8, smm:33.6, waist:'', note:'InBody gốc (sau bữa trưa)' }] };
 try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch (e) {}
+S.custom = Object.assign({ ex: {}, swaps: {} }, S.custom || {});
+Object.values(S.custom.ex).forEach(e => ALLEX[e.id] = e);
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Không lưu được: bộ nhớ trình duyệt bị chặn'); } }
 
 const UI = { tab:'today', date: todayStr(), open:null, range:7, lift:null, drafts:{}, map:'vol', planView:'cal' };
@@ -283,13 +296,50 @@ if (UI.date < PLAN_START) UI.date = PLAN_START;
 /* ================= LOGIC BUỔI TẬP ================= */
 function sessionKeyFor(s) { return (S.logs[s] && S.logs[s].session) || plannedSession(s) || 'rest'; }
 
-function exList(s, key) {
-  const w = weekOf(s); const sess = SESSIONS[key];
-  let list = sess.ex;
+// Danh sách bài theo plan, đã áp dụng các lần thay bài cố định (cho mọi buổi sau)
+function baseList(key) {
+  const sw = S.custom.swaps[key] || {};
+  return (SESSIONS[key] || { ex: [] }).ex.map(e => sw[e.id] && ALLEX[sw[e.id]] ? ALLEX[sw[e.id]] : e);
+}
+function plannedList(s, key) {
+  const w = weekOf(s); let list = baseList(key);
   if (w === 11 && key === 'pullA') list = list.filter(e => !e.leg);
   const log = S.logs[s] || UI.drafts[s];
-  if (log && log.ex && log.session === key) list = list.concat(Object.keys(log.ex).filter(id => ALLEX[id] && !list.some(e => e.id === id)).map(id => ALLEX[id]));
+  if (log && log.session === key && log.swap) list = list.map(e => log.swap[e.id] && ALLEX[log.swap[e.id]] ? ALLEX[log.swap[e.id]] : e);
   return list;
+}
+function exList(s, key, noExtra) {
+  let list = plannedList(s, key);
+  const log = S.logs[s] || UI.drafts[s];
+  if (!noExtra && log && log.ex && log.session === key) list = list.concat(Object.keys(log.ex).filter(id => ALLEX[id] && !list.some(e => e.id === id)).map(id => ALLEX[id]));
+  return list;
+}
+const primaryOf = ex => Object.entries(ex.m).sort((a, b) => b[1] - a[1])[0][0];
+function swapExercise(s, oldId, newId, permanent) {
+  const log = getLog(s), key = log.session, w = weekOf(s), ex = ALLEX[newId];
+  const base = baseList(key).map(e => e.id);
+  const last = lastSets(newId, 0, s), n = log.ex[oldId] ? log.ex[oldId].sets.length : setCount(ex, w);
+  const fresh = { v: 0, sets: Array.from({ length: n }, () => ({ kg: last ? last.sets[0].kg : '', rep: '', rir: '', done: false })) };
+  const ne = {}; let put = false;
+  Object.entries(log.ex).forEach(([id, e]) => { if (id === oldId) { ne[newId] = fresh; put = true; } else if (id !== newId) ne[id] = e; });
+  if (!put) ne[newId] = fresh;
+  log.ex = ne;
+  log.swap = log.swap || {};
+  const origin = base.includes(oldId) ? oldId : Object.keys(log.swap).find(k => log.swap[k] === oldId);
+  if (origin) { if (origin === newId) delete log.swap[origin]; else log.swap[origin] = newId; }
+  if (permanent && SESSIONS[key] && SESSIONS[key].ex.length) {
+    const sw = S.custom.swaps[key] = S.custom.swaps[key] || {};
+    const o = SESSIONS[key].ex.map(e => e.id).find(id => (sw[id] || id) === (origin || oldId));
+    if (o) { if (o === newId) delete sw[o]; else sw[o] = newId; if (origin) delete log.swap[origin]; }
+  }
+  if (permanent) Object.keys(UI.drafts).forEach(d => { if (d !== s) delete UI.drafts[d]; });
+  UI.open = newId; commit(s);
+}
+function exOptions(excludeIds) {
+  const groups = {};
+  Object.values(ALLEX).forEach(e => { if (excludeIds.includes(e.id)) return; const g = e.custom ? 'Bài của bạn' : MUSCLES[primaryOf(e)]; (groups[g] = groups[g] || []).push(e); });
+  const order = ['Bài của bạn'].concat(Object.values(MUSCLES));
+  return Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(g => `<optgroup label="${esc(g)}">${groups[g].map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>`).join('');
 }
 function setCount(ex, w) {
   const p = phaseOf(Math.max(0, Math.min(11, w)));
@@ -512,7 +562,7 @@ function planVolume(from, to) {
   const vol = {}; Object.keys(MUSCLES).forEach(k => vol[k] = 0);
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const key = plannedSession(d); if (!key || !SESSIONS[key].ex.length) continue;
-    exList(d, key).forEach(ex => { const n = setCount(ex, weekOf(d)); for (const [m, w] of Object.entries(ex.m)) vol[m] += n * w; });
+    exList(d, key, true).forEach(ex => { const n = setCount(ex, weekOf(d)); for (const [m, w] of Object.entries(ex.m)) vol[m] += n * w; });
   }
   return vol;
 }
@@ -637,11 +687,11 @@ function viewToday() {
       <span class="tiny dim">Buổi thêm được tính vào thống kê và kỷ lục, không làm lệch lịch các tuần sau.</span></section>`;
   } else {
     const log = getLog(s);
-    const planned = (SESSIONS[key].ex || []).map(e => e.id);
+    const planned = plannedList(s, key).map(e => e.id);
     exList(s, key).forEach((ex, i) => html += exCard(ex, i, log, s, w, !planned.includes(ex.id)));
     if (key === 'free' && !Object.keys(log.ex).length) html += `<div class="card"><span class="small muted">Buổi tự do chưa có bài nào. Chọn bài ở ô bên dưới.</span></div>`;
     const groups = Object.entries(SESSIONS).filter(([, v]) => v.ex.length);
-    html += `<label class="small dim" for="addEx">Thêm bài vào buổi này</label><select class="field" id="addEx" data-act="addex"><option value="">+ Chọn bài…</option>${groups.map(([k, v]) => `<optgroup label="${esc(v.name)}">${v.ex.filter(e => !log.ex[e.id]).map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+    html += `<label class="small dim" for="addEx">Thêm bài vào buổi này</label><select class="field" id="addEx" data-act="addex"><option value="">+ Chọn bài…</option>${exOptions(Object.keys(log.ex))}</select>`;
     const n = doneSets(log), total = Object.values(log.ex).reduce((a, e) => a + e.sets.length, 0);
     html += `<button class="btn primary" style="height:52px" data-act="finish">${log.done ? 'Đã hoàn thành buổi · ' : 'Hoàn thành buổi · '}${n}/${total} set</button>`;
     if (log.done || n) html += `<button class="btn" data-act="summary">Xem thẻ tổng kết</button>`;
@@ -674,7 +724,7 @@ function exCard(ex, i, log, s, w, extra) {
         <input class="cell mono${dc}" type="number" inputmode="numeric" aria-label="RIR set ${j + 1}" placeholder="${esc(rir)}" value="${esc(x.rir)}" data-act="set" data-id="${ex.id}" data-j="${j}" data-f="rir">
         <button class="check" aria-pressed="${x.done}" aria-label="Xong set ${j + 1}" data-act="done" data-id="${ex.id}" data-j="${j}">${CHECK}</button></div>`;
     });
-    h += `<div class="row" style="flex-wrap:wrap;gap:4px 16px"><button class="linkbtn" data-act="addset" data-id="${ex.id}">+ Thêm set</button>${e.sets.length > 1 ? `<button class="linkbtn" style="color:var(--dim)" data-act="delset" data-id="${ex.id}">Bớt 1 set</button>` : ''}${ex.alt ? `<button class="linkbtn" data-act="variant" data-id="${ex.id}">Đổi sang: ${esc(exName(ex, e.v ? 0 : 1))}</button>` : ''}</div>`;
+    h += `<div class="row" style="flex-wrap:wrap;gap:4px 16px"><button class="linkbtn" data-act="addset" data-id="${ex.id}">+ Thêm set</button><button class="linkbtn" data-act="swapex" data-id="${ex.id}">Thay bài</button>${e.sets.length > 1 ? `<button class="linkbtn" style="color:var(--dim)" data-act="delset" data-id="${ex.id}">Bớt 1 set</button>` : ''}${ex.alt ? `<button class="linkbtn" data-act="variant" data-id="${ex.id}">Đổi sang: ${esc(exName(ex, e.v ? 0 : 1))}</button>` : ''}</div>`;
     if (ex.tip) h += `<div class="hint">${esc(ex.tip)} RIR mục tiêu ${rir}.</div>`;
     if (extra) h += `<button class="linkbtn" style="color:var(--dim);align-self:flex-start" data-act="rmex" data-id="${ex.id}">Xoá bài này khỏi buổi</button>`;
     h += `</div>`;
@@ -944,6 +994,18 @@ document.addEventListener('click', async ev => {
   else if (act === 'finish') { const log = getLog(s); log.done = !log.done; commit(s); if (log.done) { render(); openSummary(s); return; } }
   else if (act === 'summary') { openSummary(s); return; }
   else if (act === 'addsess') { delete UI.drafts[s]; S.logs[s] = b.dataset.k === 'free' ? { session: 'free', ex: {}, done: false, extra: true } : Object.assign(buildLog(s, b.dataset.k), { extra: true }); save(); UI.open = null; toast('Đã thêm ' + SESSIONS[b.dataset.k].name + ' vào ' + short(s)); }
+  else if (act === 'swapex') {
+    const id = b.dataset.id, log = getLog(s);
+    UI.swapping = id;
+    $('#swapTitle').textContent = 'Thay bài: ' + exName(ALLEX[id], (log.ex[id] || {}).v || 0);
+    const same = Object.values(ALLEX).filter(e => e.id !== id && !log.ex[e.id] && primaryOf(e) === primaryOf(ALLEX[id]));
+    $('#swapSel').innerHTML = `<option value="">Chọn bài…</option>${same.length ? `<optgroup label="Cùng nhóm cơ">${same.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</optgroup>` : ''}${exOptions(Object.keys(log.ex).concat(same.map(e => e.id)))}<option value="__new">+ Tạo bài mới…</option>`;
+    $('#swapMus').innerHTML = Object.entries(MUSCLES).map(([k, n]) => `<option value="${k}" ${k === primaryOf(ALLEX[id]) ? 'selected' : ''}>${n}</option>`).join('');
+    $('#swapNew').style.display = 'none'; $('#swapName').value = ''; $('#swapPerm').checked = false;
+    $('#swapPerm').closest('label').style.display = SESSIONS[log.session] && SESSIONS[log.session].ex.length ? 'flex' : 'none';
+    try { $('#swapDlg').showModal(); } catch (e) {}
+    return;
+  }
   else if (act === 'rmex') { const log = getLog(s); if (log.ex[b.dataset.id].sets.some(x => x.done) && !(await ask('Bài này đã có set được ghi. Xoá khỏi buổi?'))) return; delete log.ex[b.dataset.id]; commit(s); UI.open = null; }
   else if (act === 'usesugg') { const e = getLog(s).ex[b.dataset.id]; e.sets.forEach(x => { if (!x.done) x.kg = b.dataset.kg; }); commit(s); toast('Đã điền ' + b.dataset.kg + ' kg cho các set còn lại'); }
   else if (act === 'map') { UI.map = b.dataset.v; }
@@ -987,7 +1049,7 @@ document.addEventListener('change', async ev => {
       const data = JSON.parse(await el.files[0].text());
       if (!data.logs || !data.body) throw new Error();
       if (!(await ask('Thay toàn bộ dữ liệu hiện tại bằng file sao lưu này?'))) return;
-      S = { logs: data.logs, body: data.body }; save(); toast('Đã nhập dữ liệu'); render();
+      S = { logs: data.logs, body: data.body, custom: Object.assign({ ex: {}, swaps: {} }, data.custom || {}) }; Object.values(S.custom.ex).forEach(e => ALLEX[e.id] = e); save(); toast('Đã nhập dữ liệu'); render();
     } catch (e) { toast('File không đúng định dạng sao lưu của app'); }
   }
 });
@@ -1000,6 +1062,25 @@ document.addEventListener('submit', ev => {
 });
 
 $('#sumClose').onclick = () => $('#sum').close();
+$('#swapSel').onchange = () => { $('#swapNew').style.display = $('#swapSel').value === '__new' ? 'flex' : 'none'; };
+$('#swapCancel').onclick = () => $('#swapDlg').close();
+$('#swapOk').onclick = async () => {
+  const s = UI.date, oldId = UI.swapping, log = getLog(s);
+  let newId = $('#swapSel').value;
+  if (!newId) { toast('Chọn một bài để thay'); return; }
+  if (newId === '__new') {
+    const name = $('#swapName').value.trim(); if (!name) { toast('Nhập tên bài mới'); return; }
+    const old = ALLEX[oldId], mus = $('#swapMus').value;
+    newId = 'c' + Date.now().toString(36);
+    const def = { id: newId, name, custom: true, type: old.type === 'main' ? 'acc' : old.type, sets: old.sets.slice(), reps: old.reps.slice(), rest: old.rest, inc: '+1 nấc', m: { [mus]: 1 }, leg: ['quad','ham','glute','adductor','calf'].includes(mus) };
+    S.custom.ex[newId] = def; ALLEX[newId] = def;
+  }
+  if (log.ex[oldId] && log.ex[oldId].sets.some(x => x.done)) { $('#swapDlg').close(); if (!(await ask('Bài này đã có set được ghi. Thay bài sẽ bỏ các set đó. Tiếp tục?'))) return; }
+  const perm = $('#swapPerm').checked;
+  swapExercise(s, oldId, newId, perm);
+  try { $('#swapDlg').close(); } catch (e) {}
+  toast(perm ? 'Đã thay bài cho buổi này và các buổi sau' : 'Đã thay bài cho buổi này'); render();
+};
 $('#sumShare').onclick = () => shareSummary();
 render();
 if ('serviceWorker' in navigator && location.protocol === 'https:') { navigator.serviceWorker.register('sw.js').catch(() => {}); }
