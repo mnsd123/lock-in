@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Tập Tết">
+<meta name="apple-mobile-web-app-title" content="GymLock">
 <meta name="theme-color" content="#050505">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<title>Tập Tết 2027</title>
+<title>GymLock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -466,7 +466,7 @@ async function shareSummary() {
   g.fillStyle = '#050505'; g.fillRect(0, 0, W, H);
   const rg = g.createRadialGradient(W * .85, 0, 0, W * .85, 0, W); rg.addColorStop(0, '#3A1A08'); rg.addColorStop(1, 'rgba(5,5,5,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H);
   const F = (w, sz, fam) => `${w} ${sz}px ${fam === 'm' ? "'JetBrains Mono', monospace" : "'Be Vietnam Pro', system-ui, sans-serif"}`;
-  g.fillStyle = '#8B8B93'; g.font = F(600, 30); g.fillText(`${fmtDate(m.s).toUpperCase()}  ·  TẬP TẾT 2027`, 72, 110);
+  g.fillStyle = '#8B8B93'; g.font = F(600, 30); g.fillText(`${fmtDate(m.s).toUpperCase()}  ·  GYMLOCK`, 72, 110);
   g.fillStyle = '#F4F4F5'; g.font = F(800, 120); g.fillText(m.sess.name, 72, 250);
   g.fillStyle = '#FF8A4A'; g.font = F(600, 34); g.fillText(m.sess.focus.split(/ [+·] /)[0], 72, 310);
   g.fillStyle = '#8B8B93'; g.font = F(600, 26); g.fillText('ĐIỂM NỖ LỰC', 72, 420);
@@ -957,7 +957,7 @@ document.addEventListener('click', async ev => {
   else if (act === 'export' || act === 'copy') {
     const json = JSON.stringify(Object.assign({ app: 'tt27', at: new Date().toISOString() }, S));
     if (act === 'copy') { try { await navigator.clipboard.writeText(json); toast('Đã sao chép dữ liệu. Dán vào Ghi chú để giữ.'); } catch (e) { toast('Không sao chép được, dùng Xuất file'); } return; }
-    const a = $('#dl'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = `tap-tet-${todayStr()}.json`; a.textContent = 'Bấm vào đây để lưu file sao lưu'; a.style.display = 'block'; a.click(); return;
+    const a = $('#dl'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = `gymlock-${todayStr()}.json`; a.textContent = 'Bấm vào đây để lưu file sao lưu'; a.style.display = 'block'; a.click(); return;
   }
   else return;
   render();
