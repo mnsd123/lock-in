@@ -263,7 +263,7 @@ const SESSIONS = {
     { id:'crunch', name:'Cable crunch', type:'core', sets:[2,3,3], reps:['10–15','10–15','10–15'], rest:'1:00', inc:'+1 nấc', m:{abs:1} },
     { id:'pallof', name:'Pallof press (mỗi bên)', type:'core', sets:[2,2,3], reps:['10','10','10'], rest:'0:45', inc:'+1 nấc', m:{oblique:1,abs:.5} }
   ]},
-  ball: { name:'Đá bóng', tag:'Thứ 4', focus:'Đá bóng cố định; nghỉ đá thì chạy nhẹ Z2 30–45 phút', ex:[] },
+  ball: { name:'Đá bóng', tag:'T2 · T4', focus:'Đá bóng cố định; nghỉ đá thì chạy nhẹ Z2 30–45 phút', ex:[] },
   free: { name:'Buổi tự do', tag:'Tập thêm', focus:'Tự chọn bài tập', dur:'tuỳ bạn', ex:[] },
   rest: { name:'Nghỉ', tag:'Hồi phục', focus:'Nghỉ hoàn toàn: ngủ đủ, ăn đủ protein, đi bộ nhẹ nếu muốn', ex:[] }
 };
@@ -323,8 +323,10 @@ function plannedSession(s) {
   const w = weekOf(s), d = dow(s);
   if (w < 0 || w > 11) return null;
   if (w === 0) return [null,null,null,null,'pullA','core','rest'][d];
-  if (w === 11) return ['pushA','pullA','ball','pushB','pullB',null,null][d];
-  return ['pushA','pullB','ball','pushB','pullA','core','rest'][d];
+  if (w === 1) return ['pushA','pullB','ball','pushB','pullA','core','rest'][d];
+  // Từ tuần 2 (30/11): đá bóng cố định T2 và T4
+  if (w === 11) return ['ball','pushA','ball','pullA','pushB',null,null][d];
+  return ['ball','pushA','ball','pullA','pushB','pullB','core'][d];
 }
 
 /* ================= TRẠNG THÁI ================= */
@@ -349,6 +351,7 @@ function baseList(key) {
 function plannedList(s, key) {
   const w = weekOf(s); let list = baseList(key);
   if (w === 11 && key === 'pullA') list = list.filter(e => !e.leg);
+  if (w >= 2 && key === 'pushA') list = list.filter(e => !e.leg); // hôm sau đá bóng, đùi trước đã được tập
   const log = S.logs[s] || UI.drafts[s];
   if (log && log.session === key && log.swap) list = list.map(e => log.swap[e.id] && ALLEX[log.swap[e.id]] ? ALLEX[log.swap[e.id]] : e);
   return list;
