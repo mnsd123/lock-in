@@ -1,6 +1,6 @@
 // GymLock – service worker: chạy được khi không có mạng.
 // Đổi số phiên bản mỗi lần cập nhật app để iPhone tải bản mới.
-const VERSION = 'tt27-v13';
+const VERSION = 'tt27-v14';
 const ASSETS = [
   './',
   './index.html',
