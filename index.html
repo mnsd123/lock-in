@@ -218,7 +218,7 @@ const SESSIONS = {
   ]},
   pullA: { name:'Pull A', tag:'Nặng', focus:'Lưng, vai sau, tay sau ưu tiên + chân nhẹ', dur:'70–80 phút', ex:[
     { id:'csrow', name:'Chest-supported row machine', alt:'Barbell row machine (linear) hoặc seated cable row', rule:'cb', type:'main', sets:[4,4,4], reps:['6–8','6–8','5–7'], rest:'2:30', inc:'+1 nấc', m:{traps:1,lats:.5,rdelt:.5,biceps:.5}, tip:'Ngực tựa chắc, khuỷu 45°, kéo về sườn dưới, siết bả vai 1 giây, hạ 2–3 giây.' },
-    { id:'pullup', name:'Pull-up (trợ lực nếu cần)', alt:'Lat pulldown', type:'main', sets:[3,4,4], reps:['6–10','6–10','5–8'], rest:'2:00', inc:'+1 nấc / bớt trợ lực', m:{lats:1,biceps:.5}, tip:'Treo thẳng tay, kéo ngực lên thanh, không đung đưa.' },
+    { id:'pullup', name:'Pull-up (máy trợ lực)', alt:'Lat pulldown', assist:true, type:'main', sets:[3,4,4], reps:['6–10','6–10','5–8'], rest:'2:00', inc:'giảm 1 nấc trợ lực', m:{lats:1,biceps:.5}, tip:'Ô KG là mức trợ lực: số càng thấp càng nặng. Treo thẳng tay, kéo ngực lên thanh, không đung đưa. Đủ rep ở mọi set thì giảm 1 nấc trợ lực.' },
     { id:'skull', name:'Skullcrusher', alt:'Overhead triceps extension', type:'acc', sets:[3,4,4], reps:['8–12','8–12','8–10'], rest:'1:30', inc:'+2.5 kg', m:{triceps:1}, tip:'Khuỷu cố định hướng lên trần, hạ thanh về trán. Đau khuỷu thì đổi sang overhead bằng cáp.' },
     { id:'tripd', name:'Triceps pushdown', type:'iso', sets:[2,3,3], reps:['10–12','10–12','10–12'], rest:'1:00–1:15', inc:'+1 nấc', m:{triceps:1} },
     { id:'rdfly', name:'Rear delt fly hoặc reverse pec deck', type:'iso', sets:[3,3,4], reps:['12–15','15','15'], rest:'1:00', inc:'+1 nấc', m:{rdelt:1,traps:.25} },
@@ -409,8 +409,12 @@ function upHint(ex, v, s) {
 }
 
 /* ================= KỶ LỤC, TẠ ĐỀ XUẤT, HẠNG ================= */
-const e1 = x => (+x.kg) * (1 + (+x.rep) / 30);
-const okSet = x => x.done && +x.kg > 0 && +x.rep > 0;
+// Bài trợ lực (x.as): ô kg là mức trợ lực, tải thực = cân nặng lúc tập - trợ lực
+const ld = x => x.as ? Math.max(0, (+x.bw || bodyWeight()) - (+x.kg || 0)) : +x.kg;
+const e1 = x => ld(x) * (1 + (+x.rep) / 30);
+const okSet = x => x.done && (+x.kg > 0 || x.as) && +x.rep > 0;
+const fmtSet = (kg, rep, as) => as ? (+kg > 0 ? `trợ lực ${kg} kg × ${rep}` : `bodyweight × ${rep}`) : `${kg} kg × ${rep}`;
+Object.values(S.logs).forEach(l => Object.entries(l.ex || {}).forEach(([id, e]) => { if (id === 'pullup' && !e.v) e.sets.forEach(x => { if (x.done && !x.as) { x.as = true; x.bw = x.bw || 75.5; } }); }));
 // 1RM ước tính tốt nhất trước một set (các ngày trước + các set trước trong cùng ngày)
 function bestBefore(id, v, s, setRef) {
   let best = 0, maxKg = 0;
@@ -439,8 +443,10 @@ function suggestKg(ex, v, s) {
   const w = weekOf(s), range = repsFor(ex, w);
   if (w === 4 || w === 8) return { kg: +last.sets[0].kg, reps: range, rir: '3–4', why: 'tuần giảm tải, giữ nguyên tạ buổi ' + short(last.date) };
   const [lo, hi0] = range.split('–').map(Number), hi = hi0 || lo;
-  const kg0 = Math.max(...last.sets.map(x => +x.kg)), atTop = last.sets.filter(x => +x.kg === kg0);
+  const asst = ex.assist && !v;
+  const kg0 = asst ? Math.min(...last.sets.map(x => +x.kg || 0)) : Math.max(...last.sets.map(x => +x.kg)), atTop = last.sets.filter(x => (+x.kg || 0) === kg0);
   const step = stepOf(ex), rirS = rirFor(ex, w);
+  if (asst && atTop.every(x => +x.rep >= hi)) return kg0 <= 0 ? { kg: 0, reps: hi, rir: rirS, why: `đã hết trợ lực, buổi ${short(last.date)} chạm ${hi} rep: thêm tạ đeo khi đủ sức` } : { kg: Math.max(0, +(kg0 - step).toFixed(2)), reps: lo, rir: rirS, why: `buổi ${short(last.date)} đã chạm ${hi} rep ở trợ lực ${kg0} kg, giảm 1 nấc trợ lực` };
   if (atTop.every(x => +x.rep >= hi)) return { kg: +(kg0 + step).toFixed(2), reps: lo, rir: rirS, why: `buổi ${short(last.date)} đã chạm ${hi} rep ở ${kg0} kg, tăng 1 bậc` };
   const best = Math.max(...atTop.map(x => +x.rep));
   return { kg: kg0, reps: Math.min(hi, Math.max(lo, best + 1)), rir: rirS, why: `giữ ${kg0} kg, thêm 1 rep so với buổi ${short(last.date)}` };
@@ -451,7 +457,7 @@ function allPRs() {
     let best = null, n = 0;
     for (const [d, l] of Object.entries(S.logs)) {
       const e = l.ex && l.ex[id]; if (!e || (e.v || 0) !== v) continue;
-      e.sets.filter(okSet).forEach(x => { n++; if (!best || e1(x) > best.val) best = { val: e1(x), kg: +x.kg, rep: +x.rep, date: d }; });
+      e.sets.filter(okSet).forEach(x => { n++; if (!best || e1(x) > best.val) best = { val: e1(x), kg: +x.kg, rep: +x.rep, date: d, as: !!x.as }; });
     }
     if (best) out.push(Object.assign({ id, v, name: exName(ALLEX[id], v), n }, best));
   }
@@ -490,7 +496,7 @@ function muscleRank(k) {
 }
 
 /* ================= TỔNG KẾT BUỔI ================= */
-function tonnage(log) { return log && log.ex ? Object.values(log.ex).reduce((a, e) => a + e.sets.filter(okSet).reduce((b, x) => b + (+x.kg) * (+x.rep), 0), 0) : 0; }
+function tonnage(log) { return log && log.ex ? Object.values(log.ex).reduce((a, e) => a + e.sets.filter(okSet).reduce((b, x) => b + ld(x) * (+x.rep), 0), 0) : 0; }
 function effortOf(log) {
   if (!log) return 0;
   if (log.ball && log.ball.type !== 'none') return Math.round((+log.ball.min || (log.ball.type === 'run' ? 35 : 90)) * (log.ball.type === 'run' ? 1.2 : 1.6));
@@ -503,7 +509,7 @@ function summaryOf(s) {
   const ats = []; let prs = 0; const lifts = [];
   Object.entries(log.ex || {}).forEach(([id, e]) => {
     const ds = e.sets.filter(okSet); ds.forEach(x => { if (x.at) ats.push(x.at); if (x.pr) prs++; });
-    if (ds.length && ALLEX[id]) { const b = ds.reduce((a, x) => e1(x) > e1(a) ? x : a); lifts.push({ name: exName(ALLEX[id], e.v), kg: +b.kg, rep: +b.rep, pr: ds.some(x => x.pr), val: e1(b) }); }
+    if (ds.length && ALLEX[id]) { const b = ds.reduce((a, x) => e1(x) > e1(a) ? x : a); lifts.push({ name: exName(ALLEX[id], e.v), kg: +b.kg, rep: +b.rep, as: !!b.as, pr: ds.some(x => x.pr), val: e1(b) }); }
   });
   ats.sort();
   const dur = ats.length > 1 ? Math.round((ats[ats.length - 1] - ats[0]) / 60000) + 2 : null;
@@ -521,7 +527,7 @@ function openSummary(s) {
     <div style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:8px"><h1>${esc(m.sess.name)}</h1><span class="small" style="color:var(--acc2);font-weight:600">${esc(m.sess.focus)}</span>
     <div><span class="tiny dim">ĐIỂM NỖ LỰC</span><div class="mono" style="font-size:40px;font-weight:700;line-height:1;color:var(--acc)">${m.eff}</div></div></div>${UI.sumFig}</div>
     <div class="sumgrid"><div><span>THỜI LƯỢNG</span><b>${m.dur ? m.dur + ' phút' : '–'}</b></div><div><span>KHỐI LƯỢNG</span><b>${fmtKg(m.ton)}</b></div><div><span>SỐ SET</span><b>${m.sets}</b></div><div><span>KỶ LỤC MỚI</span><b style="color:${m.prs ? '#F2C14E' : 'var(--text)'}">${m.prs}</b></div></div>
-    ${m.lifts.length ? `<div style="display:flex;flex-direction:column;gap:6px">${m.lifts.map(l => `<div class="between small"><span>${esc(l.name)}${l.pr ? '<i class="pr">★</i>' : ''}</span><span class="mono">${l.kg} kg × ${l.rep}</span></div>`).join('')}</div>` : ''}`;
+    ${m.lifts.length ? `<div style="display:flex;flex-direction:column;gap:6px">${m.lifts.map(l => `<div class="between small"><span>${esc(l.name)}${l.pr ? '<i class="pr">★</i>' : ''}</span><span class="mono">${fmtSet(l.kg, l.rep, l.as)}</span></div>`).join('')}</div>` : ''}`;
   try { $('#sum').showModal(); } catch (e) {}
 }
 async function shareSummary() {
@@ -552,7 +558,7 @@ async function shareSummary() {
   });
   m.lifts.slice(0, 3).forEach((l, i) => {
     const y = 1100 + i * 58; g.fillStyle = '#D4D4D8'; g.font = F(500, 34); g.fillText((l.pr ? '★ ' : '') + l.name.slice(0, 30), 72, y);
-    g.fillStyle = '#F4F4F5'; g.font = F(700, 34, 'm'); g.textAlign = 'right'; g.fillText(`${l.kg} kg × ${l.rep}`, W - 72, y); g.textAlign = 'left';
+    g.fillStyle = '#F4F4F5'; g.font = F(700, 34, 'm'); g.textAlign = 'right'; g.fillText(fmtSet(l.kg, l.rep, l.as), W - 72, y); g.textAlign = 'left';
   });
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   const file = new File([blob], `tong-ket-${m.s}.png`, { type: 'image/png' });
@@ -729,10 +735,10 @@ function exCard(ex, i, log, s, w, extra) {
   if (open) {
     const hint = upHint(ex, e.v, s);
     h += `<div class="exbody">`;
-    if (hint) h += `<div class="hint${hint.up ? ' up' : ''}">Lần trước (${short(hint.last.date)}): ${hint.last.sets.map(x => `${x.kg}×${x.rep}`).join(', ')}${hint.up ? `. Đã chạm ${reps.split('–').pop()} rep mọi set: tăng ${ex.inc}.` : '.'}</div>`;
+    if (hint) h += `<div class="hint${hint.up ? ' up' : ''}">Lần trước (${short(hint.last.date)}): ${hint.last.sets.map(x => `${x.kg}×${x.rep}`).join(', ')}${hint.up ? `. Đã chạm ${reps.split('–').pop()} rep mọi set: ${ex.assist && !e.v ? 'giảm 1 nấc trợ lực' : 'tăng ' + ex.inc}.` : '.'}</div>`;
     const sg = suggestKg(ex, e.v, s);
     if (sg && e.sets.some(x => !x.done)) h += `<div class="sugg"><div><b class="mono">${sg.kg} kg × ${sg.reps}</b><span class="tiny dim">Tạ đề xuất · RIR ${sg.rir} · ${esc(sg.why)}</span></div><button class="btn" style="height:38px;padding:0 14px;font-size:13px" data-act="usesugg" data-id="${ex.id}" data-kg="${sg.kg}">Dùng</button></div>`;
-    h += `<div class="setgrid sethead"><span>SET</span><span>KG</span><span>REP</span><span>RIR</span><span></span></div>`;
+    h += `<div class="setgrid sethead"><span>SET</span><span>${ex.assist && !e.v ? 'TRỢ LỰC' : 'KG'}</span><span>REP</span><span>RIR</span><span></span></div>`;
     e.sets.forEach((x, j) => {
       const dc = x.done ? ' done' : '';
       h += `<div class="setgrid"><span class="setn${x.done ? ' on' : ''}">${j + 1}${x.pr ? '<i class="pr" title="Kỷ lục mới">★</i>' : ''}</span>
@@ -742,6 +748,7 @@ function exCard(ex, i, log, s, w, extra) {
         <button class="check" aria-pressed="${x.done}" aria-label="Xong set ${j + 1}" data-act="done" data-id="${ex.id}" data-j="${j}">${CHECK}</button></div>`;
     });
     h += `<div class="row" style="flex-wrap:wrap;gap:4px 16px"><button class="linkbtn" data-act="addset" data-id="${ex.id}">+ Thêm set</button><button class="linkbtn" data-act="swapex" data-id="${ex.id}">Thay bài</button>${e.sets.length > 1 ? `<button class="linkbtn" style="color:var(--dim)" data-act="delset" data-id="${ex.id}">Bớt 1 set</button>` : ''}${ex.alt ? `<button class="linkbtn" data-act="variant" data-id="${ex.id}">Đổi sang: ${esc(exName(ex, e.v ? 0 : 1))}</button>` : ''}</div>`;
+    if (ex.assist && !e.v) h += `<div class="hint">Trợ lực càng thấp càng nặng. Tải thực ≈ ${(bodyWeight() - (+(e.sets.find(x => x.kg !== '') || {}).kg || 0)).toFixed(1)} kg (cân ${bodyWeight()} kg trừ trợ lực). Ghi 0 nếu kéo bằng sức mình.</div>`;
     if (ex.tip) h += `<div class="hint">${esc(ex.tip)} RIR mục tiêu ${rir}.</div>`;
     if (extra) h += `<button class="linkbtn" style="color:var(--dim);align-self:flex-start" data-act="rmex" data-id="${ex.id}">Xoá bài này khỏi buổi</button>`;
     h += `</div>`;
@@ -903,7 +910,7 @@ function viewStats() {
   const t7 = addDays(t, -6);
   h += `<section class="card"><div class="between"><b>Kỷ lục cá nhân</b><span class="chip" style="background:#2A2207;color:#F2C14E">★ ${prCount} lần phá kỷ lục</span></div>`;
   if (!prs.length) h += `<span class="small dim">Chưa có dữ liệu. Mỗi khi 1RM ước tính của một bài vượt mức cũ, set đó được gắn ★.</span>`;
-  prs.slice(0, UI.allPR ? 99 : 6).forEach(r => h += `<div class="prrow"><span class="small">${esc(r.name)}${r.date >= t7 ? ' <span class="chip acc" style="padding:2px 6px">Mới</span>' : ''}</span><span class="mono small">${r.kg} kg × ${r.rep}</span><span class="tiny dim">${short(r.date)} · ${r.n} set đã ghi</span><span class="mono tiny" style="color:#F2C14E;text-align:right">1RM ≈ ${r.val.toFixed(1)}</span></div>`);
+  prs.slice(0, UI.allPR ? 99 : 6).forEach(r => h += `<div class="prrow"><span class="small">${esc(r.name)}${r.date >= t7 ? ' <span class="chip acc" style="padding:2px 6px">Mới</span>' : ''}</span><span class="mono small">${fmtSet(r.kg, r.rep, r.as)}</span><span class="tiny dim">${short(r.date)} · ${r.n} set đã ghi</span><span class="mono tiny" style="color:#F2C14E;text-align:right">1RM ≈ ${r.val.toFixed(1)}</span></div>`);
   if (prs.length > 6) h += `<button class="linkbtn" data-act="allPR">${UI.allPR ? 'Thu gọn' : 'Xem tất cả ' + prs.length + ' bài'}</button>`;
   h += `</section>`;
 
@@ -912,7 +919,7 @@ function viewStats() {
   const has = lifts.filter(id => Object.values(S.logs).some(l => l.ex && l.ex[id] && l.ex[id].sets.some(x => x.done && x.kg && x.rep)));
   const lift = UI.lift && lifts.includes(UI.lift) ? UI.lift : (has[0] || 'bench');
   const pts = Object.entries(S.logs).filter(([, l]) => l.ex && l.ex[lift]).map(([d, l]) => {
-    const best = Math.max(0, ...l.ex[lift].sets.filter(x => x.done && x.kg && x.rep).map(x => (+x.kg) * (1 + (+x.rep) / 30)));
+    const best = Math.max(0, ...l.ex[lift].sets.filter(okSet).map(e1));
     return { x: d, y: Math.round(best * 10) / 10 };
   }).filter(p => p.y > 0);
   h += `<section class="card"><div class="between"><b>Sức mạnh (1RM ước tính)</b></div>
@@ -994,6 +1001,7 @@ document.addEventListener('click', async ev => {
     const log = getLog(s), e = log.ex[b.dataset.id], x = e.sets[+b.dataset.j], ex = ALLEX[b.dataset.id];
     x.done = !x.done; x.pr = false;
     if (x.done) {
+      if (ex.assist && !e.v) { x.as = true; x.bw = bodyWeight(); } else { delete x.as; delete x.bw; }
       const w = weekOf(s);
       if (x.rep === '') x.rep = String(parseInt(repsFor(ex, w), 10));
       if (x.kg === '' && +b.dataset.j > 0) x.kg = e.sets[+b.dataset.j - 1].kg;
